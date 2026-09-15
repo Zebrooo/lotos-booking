@@ -129,12 +129,17 @@ identity`, наружу для пациента — непредсказуемы
   `(provider, external_id)` — идемпотентность уведомлений.
 - `ledger`: журнал операций, только вставка. `booking_id`, `kind`
   (`advance`, `settle`, `refund`, `retain`, `transfer_out`, `transfer_in`),
-  `amount_kopecks`, `payment_id`, `receipt_id`, `created_at`, `note`.
-  Состояние денег записи выводится из журнала: сумма авансов минус возвраты
-  и переносы. Колонки-статуса денег в `bookings` нет.
+  `amount_kopecks`, `payment_id`, `created_at`, `note`. Состояние денег
+  записи выводится из журнала (`src/domain/money.ts`): приход минус
+  списания; `retain` баланс не списывает, чтобы возврат по требованию после
+  удержания оставался возможным. Колонки-статуса денег в `bookings` нет.
+- `refunds`: возврат в работе. `booking_id`, `payment_id`, `amount_kopecks`,
+  `status` (`pending`, `done`, `failed`), `external_id`, `attempts`,
+  `last_error`. Строка появляется при отмене с возвратом; `ledger.refund` и
+  чек возврата пишутся, когда провайдер подтвердил.
 - `receipts`: фискальные чеки. `booking_id`, `kind` (`advance`, `settle`,
-  `refund`), `ledger_id`, `provider`, `external_id`, `status` (`pending`,
-  `sent`, `failed`), `email`, `attempts`, `last_error`.
+  `refund`), `ledger_id`, `amount_kopecks`, `provider`, `external_id`,
+  `status` (`pending`, `sent`, `failed`), `email`, `attempts`, `last_error`.
 
 **Служебные**
 
@@ -227,9 +232,10 @@ held ──► confirmed ──► done
    минут без ответа.
 
 **Отмена пациентом.** Со страницы «Моя запись». `cancelOutcome` говорит
-последствие до подтверждения. Возврат: `ledger.refund`, вызов
-`PaymentProvider.refund`, чек возврата, письмо. Удержание: `ledger.retain`,
-письмо с текстом про расходы и телефоном клиники. Кнопка доступна всегда.
+последствие до подтверждения. Возврат: строка `refunds`, затем фоновая
+задача вызывает `PaymentProvider.refund` и при успехе пишет `ledger.refund`,
+чек возврата и письмо. Удержание: `ledger.retain` сразу, письмо с текстом про
+расходы и телефоном клиники. Кнопка доступна всегда.
 
 **Перенос пациентом.** Раньше порога: выбор нового окна, в одной транзакции
 старая запись → `transferred`, новая → `confirmed`, `transfer_out` и
@@ -382,7 +388,8 @@ docker-compose.yml  Dockerfile  .github/workflows/ci.yml
 8. Адаптеры банка и кассы после ответа банка; СМС после выбора провайдера;
    1С после сеанса AnyDesk.
 
-Подробная разбивка — в плане работ `13-plan-v1.md`.
+Подробная разбивка — в планах работ `13-plan-v1-core.md` (каркас, домен, база,
+сценарии) и `14-plan-v1-ui.md` (фоновые задачи, страницы, кабинет).
 
 ## 15. Что уточнится после сеанса AnyDesk и ответа банка
 
