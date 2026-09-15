@@ -23,3 +23,6 @@ Thumbs.db
 
 __pycache__/
 *.pyc
+
+next-env.d.ts
+*.tsbuildinfo

@@ -1257,7 +1257,7 @@ git commit -m "Порты платежей, чеков, писем, часов �
 - Modify: `tsconfig.json` — убрать `"scripts"` из `exclude`, чтобы `tsc` проверял и скрипты.
 
 **Interfaces:**
-- Produces: `migrate(databaseUrl, dir?): Promise<string[]>`; `createDb(url): Sql`, `db(): Sql` (по `DATABASE_URL`); в тестах `testDb(): Sql`, `truncateAll(sql)`, `seedClinic(sql): Promise<{ doctorId, deviceId, consultId, uziId, consentIds: [number, number] }>`. Все `bigint` из базы приходят числами, имена колонок — в camelCase (`transform: postgres.camel`).
+- Produces: `migrate(databaseUrl, dir?): Promise<string[]>`; `createDb(url): Sql`, `db(): Sql` (по `DATABASE_URL`), `type Db = Sql | TransactionSql` для функций, вызываемых внутри чужой транзакции; в тестах `testDb(): Sql`, `truncateAll(sql)`, `seedClinic(sql): Promise<{ doctorId, deviceId, consultId, uziId, consentIds: [number, number] }>`. Все `bigint` из базы приходят числами, имена колонок — в camelCase (`transform: postgres.camel`).
 
 - [ ] **Step 1: Скрипты миграций**
 
@@ -1571,9 +1571,11 @@ create table audit (
 - [ ] **Step 3: Клиент базы** — `src/lib/db/client.ts`:
 
 ```ts
-import postgres, { type Sql } from "postgres";
+import postgres, { type Sql, type TransactionSql } from "postgres";
 
-export type { Sql };
+export type { Sql, TransactionSql };
+/** Подключение или транзакция: для функций, которые не открывают транзакцию сами. */
+export type Db = Sql | TransactionSql;
 
 // bigint (int8) из базы — числом: идентификаторы и копейки далеки от 2^53.
 const bigintAsNumber = { to: 20, from: [20], serialize: (x: number | bigint) => x.toString(), parse: (x: string) => Number(x) };
@@ -1699,7 +1701,8 @@ describe("схема", () => {
     const b3 = await mk("t3", "2026-09-15T04:30:00Z", "2026-09-15T05:00:00Z");
     await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b3}, ${doctorId}, '2026-09-15T04:30:00Z', '2026-09-15T05:00:00Z')`;
     await sql`update booking_resources set active = false where booking_id = ${b1}`;
-    await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b2}, ${doctorId}, '2026-09-15T04:15:00Z', '2026-09-15T04:45:00Z')`;
+    const b4 = await mk("t4", "2026-09-15T04:00:00Z", "2026-09-15T04:30:00Z");
+    await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b4}, ${doctorId}, '2026-09-15T04:00:00Z', '2026-09-15T04:30:00Z')`;
   });
 });
 ```
@@ -1880,7 +1883,7 @@ describe("holdSlot", () => {
 // Двойную продажу отбивает исключающее ограничение базы; код лишь переводит
 // её в понятную ошибку.
 import { nanoid } from "nanoid";
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import { localDay, localTime, addMinutes } from "@/domain/time";
 import { isSlotFree, type Rule, type ScheduleException, type Busy } from "@/domain/slots";
@@ -1900,7 +1903,7 @@ export type ServiceRow = { id: number; title: string; kind: string; durationMin:
 export type SlotContext = { service: ServiceRow; resourceIds: number[]; rules: Rule[]; exceptions: ScheduleException[]; busy: Busy[] };
 
 /** Услуга, её ресурсы для выбранного врача, правила, исключения и занятость на день. */
-export async function loadSlotContext(sql: Sql, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
+export async function loadSlotContext(sql: Db, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
   const [service] = await sql<ServiceRow[]>`select id, title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note, active from services where id = ${input.serviceId}`;
   if (!service) throw new UsecaseError("not_found", "услуга не найдена");
   if (!service.active) throw new UsecaseError("service_inactive", "услуга не оказывается");
@@ -2082,14 +2085,14 @@ describe("applyPaymentNotification", () => {
 ```ts
 // Платёж: строка payments создаётся до обращения к провайдеру, зачисление —
 // только по уведомлению. Повтор уведомления безвреден (12-design-v1.md, 11).
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import type { PaymentProvider, PaymentNotification } from "@/ports/payment";
 import { transition, type BookingStatus } from "@/domain/transitions";
 import { canAppend, type LedgerRow } from "@/domain/money";
 import { UsecaseError } from "./errors";
 
-export async function ledgerRows(sql: Sql, bookingId: number): Promise<LedgerRow[]> {
+export async function ledgerRows(sql: Db, bookingId: number): Promise<LedgerRow[]> {
   return sql<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${bookingId} order by id`;
 }
 
@@ -2258,7 +2261,7 @@ describe("cancelBooking", () => {
 // Отмена: статус и ресурсы — сразу, в транзакции. Деньги: удержание пишется
 // сразу, возврат — строкой refunds, а ledger.refund появляется после ответа
 // провайдера в executeRefund (вызывает фоновая задача или администратор).
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import type { PaymentProvider } from "@/ports/payment";
 import { transition, type BookingStatus } from "@/domain/transitions";
@@ -2273,7 +2276,7 @@ export type BookingRow = {
   service: { title: string; durationMin: number; prepayKopecks: number }; email: string;
 };
 
-export async function findBooking(sql: Sql, ref: { token?: string; bookingId?: number }, forUpdate = false): Promise<BookingRow> {
+export async function findBooking(sql: Db, ref: { token?: string; bookingId?: number }, forUpdate = false): Promise<BookingRow> {
   const where = ref.token != null ? sql`b.token = ${ref.token}` : sql`b.id = ${ref.bookingId ?? 0}`;
   const rows = await sql<BookingRow[]>`select b.id, b.token, b.patient_id, b.status, b.starts_at, b.ends_at, b.paid_at, b.resource_id, b.service_id, b.service, p.email
     from bookings b join patients p on p.id = b.patient_id where ${where} ${forUpdate ? sql`for update of b` : sql``}`;
