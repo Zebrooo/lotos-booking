@@ -1,13 +1,13 @@
 // Платёж: строка payments создаётся до обращения к провайдеру, зачисление —
 // только по уведомлению. Повтор уведомления безвреден (12-design-v1.md, 11).
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import type { PaymentProvider, PaymentNotification } from "@/ports/payment";
 import { transition, type BookingStatus } from "@/domain/transitions";
 import { canAppend, type LedgerRow } from "@/domain/money";
 import { UsecaseError } from "./errors";
 
-export async function ledgerRows(sql: Sql, bookingId: number): Promise<LedgerRow[]> {
+export async function ledgerRows(sql: Db, bookingId: number): Promise<LedgerRow[]> {
   return sql<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${bookingId} order by id`;
 }
 

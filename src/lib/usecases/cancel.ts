@@ -1,7 +1,7 @@
 // Отмена: статус и ресурсы — сразу, в транзакции. Деньги: удержание пишется
 // сразу, возврат — строкой refunds, а ledger.refund появляется после ответа
 // провайдера в executeRefund (вызывает фоновая задача или администратор).
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import type { PaymentProvider } from "@/ports/payment";
 import { transition, type BookingStatus } from "@/domain/transitions";
@@ -16,7 +16,7 @@ export type BookingRow = {
   service: { title: string; durationMin: number; prepayKopecks: number }; email: string;
 };
 
-export async function findBooking(sql: Sql, ref: { token?: string; bookingId?: number }, forUpdate = false): Promise<BookingRow> {
+export async function findBooking(sql: Db, ref: { token?: string; bookingId?: number }, forUpdate = false): Promise<BookingRow> {
   const where = ref.token != null ? sql`b.token = ${ref.token}` : sql`b.id = ${ref.bookingId ?? 0}`;
   const rows = await sql<BookingRow[]>`select b.id, b.token, b.patient_id, b.status, b.starts_at, b.ends_at, b.paid_at, b.resource_id, b.service_id, b.service, p.email
     from bookings b join patients p on p.id = b.patient_id where ${where} ${forUpdate ? sql`for update of b` : sql``}`;
