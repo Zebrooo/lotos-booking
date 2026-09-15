@@ -1699,7 +1699,8 @@ describe("схема", () => {
     const b3 = await mk("t3", "2026-09-15T04:30:00Z", "2026-09-15T05:00:00Z");
     await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b3}, ${doctorId}, '2026-09-15T04:30:00Z', '2026-09-15T05:00:00Z')`;
     await sql`update booking_resources set active = false where booking_id = ${b1}`;
-    await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b2}, ${doctorId}, '2026-09-15T04:15:00Z', '2026-09-15T04:45:00Z')`;
+    const b4 = await mk("t4", "2026-09-15T04:00:00Z", "2026-09-15T04:30:00Z");
+    await sql`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b4}, ${doctorId}, '2026-09-15T04:00:00Z', '2026-09-15T04:30:00Z')`;
   });
 });
 ```
