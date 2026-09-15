@@ -1,6 +1,8 @@
-import postgres, { type Sql } from "postgres";
+import postgres, { type Sql, type TransactionSql } from "postgres";
 
-export type { Sql };
+export type { Sql, TransactionSql };
+/** Подключение или транзакция: для функций, которые не открывают транзакцию сами. */
+export type Db = Sql | TransactionSql;
 
 // bigint (int8) из базы — числом: идентификаторы и копейки далеки от 2^53.
 const bigintAsNumber = { to: 20, from: [20], serialize: (x: number | bigint) => x.toString(), parse: (x: string) => Number(x) };

@@ -2,7 +2,7 @@
 // Двойную продажу отбивает исключающее ограничение базы; код лишь переводит
 // её в понятную ошибку.
 import { nanoid } from "nanoid";
-import type { Sql } from "@/lib/db/client";
+import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import { localDay, localTime, addMinutes } from "@/domain/time";
 import { isSlotFree, type Rule, type ScheduleException, type Busy } from "@/domain/slots";
@@ -22,7 +22,7 @@ export type ServiceRow = { id: number; title: string; kind: string; durationMin:
 export type SlotContext = { service: ServiceRow; resourceIds: number[]; rules: Rule[]; exceptions: ScheduleException[]; busy: Busy[] };
 
 /** Услуга, её ресурсы для выбранного врача, правила, исключения и занятость на день. */
-export async function loadSlotContext(sql: Sql, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
+export async function loadSlotContext(sql: Db, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
   const [service] = await sql<ServiceRow[]>`select id, title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note, active from services where id = ${input.serviceId}`;
   if (!service) throw new UsecaseError("not_found", "услуга не найдена");
   if (!service.active) throw new UsecaseError("service_inactive", "услуга не оказывается");
