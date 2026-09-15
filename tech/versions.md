@@ -3,6 +3,26 @@
 Проверено 14 сентября 2026 года. Результат аудита: **ноль уязвимостей** на 678
 пакетов в дереве зависимостей. Полный отчёт — `audit.json`.
 
+## Поправки 15 сентября 2026, первая установка
+
+Проверено установкой и прогоном линта, типов, тестов и сборки, а не только
+аудитом дерева зависимостей.
+
+- **ESLint 9.39.5 вместо 10.10.0.** `eslint-config-next` 16.3.5 тянет
+  `eslint-plugin-react` 7.37, который зовёт `context.getFilename`; в ESLint 10
+  этого метода нет, линт падает на первом же файле. Диапазон
+  `eslint-config-next` — `>=9`, линия 9 работает.
+- **TypeScript 5.9.3 вместо 7.0.2**, как и предлагалось ниже: рисковать
+  совместимостью инструментов на старте незачем.
+- **Убраны** `drizzle-orm`, `drizzle-kit`, `luxon`, `@types/luxon`, `undici`,
+  `@vitejs/plugin-react`, `@testing-library/*`, `jsdom`: по дизайну v1
+  (`../docs/12-design-v1.md`) запросы — сырой SQL, время — фиксированное
+  смещение, компонентных тестов в первой части плана нет.
+- `pnpm.overrides` из `package.json` переехал в `pnpm-workspace.yaml`: pnpm
+  10.28 поле в `package.json` больше не читает.
+- Для Tailwind 4 нужен `postcss.config.mjs` с `@tailwindcss/postcss`; в
+  прежнем списке его не было.
+
 ## Как проверялось
 
 ```bash
@@ -72,10 +92,10 @@ drizzle-kit 0.31.10
 
 | Пакет | Версия |
 |---|---|
-| typescript | 7.0.2 |
+| typescript | 5.9.3 |
 | drizzle-kit | 0.31.10 |
 | tailwindcss, @tailwindcss/postcss | 4.3.3 |
-| eslint | 10.10.0 |
+| eslint | 9.39.5 |
 | eslint-config-next | 16.3.5 |
 | vitest | 5.0.0 |
 | @vitejs/plugin-react | 6.1.1 |

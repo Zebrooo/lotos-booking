@@ -1,0 +1,19 @@
+name: lotos
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lotos
+      POSTGRES_PASSWORD: lotos
+      POSTGRES_DB: lotos
+    ports: ["127.0.0.1:55432:5432"]
+    volumes:
+      - lotos-db:/var/lib/postgresql/data
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lotos -d lotos"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  lotos-db:
