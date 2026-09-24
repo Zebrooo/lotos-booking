@@ -11,6 +11,11 @@ describe("loadAdapters", () => {
   it("заглушка платежей в production запрещена", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/production/);
   });
+  it("почта через SMTP требует SMTP_URL и MAIL_FROM", () => {
+    expect(() => loadAdapters({ NODE_ENV: "development", NOTIFIER: "smtp" })).toThrow(/SMTP_URL/);
+    const a = loadAdapters({ NODE_ENV: "development", NOTIFIER: "smtp", SMTP_URL: "smtp://127.0.0.1:2525", MAIL_FROM: "zapis@example.ru" });
+    expect(a.notify.name).toBe("smtp");
+  });
   it("неизвестный поставщик — ошибка", () => {
     expect(() => loadAdapters({ NODE_ENV: "development", PAYMENT_PROVIDER: "nobody" })).toThrow(/PAYMENT_PROVIDER/);
   });
