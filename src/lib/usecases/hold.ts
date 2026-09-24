@@ -55,9 +55,9 @@ export async function holdSlot(sql: Sql, clock: Clock, input: HoldInput): Promis
         and starts_at < ${endsAt} and ends_at > ${input.startsAt} limit 1`;
       if (dup.length > 0) throw new UsecaseError("duplicate_booking", "у пациента уже есть запись на это время");
       const [b] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, hold_until, source,
-          booker_relation, booker_name, booker_phone, booker_email)
+          booker_relation, booker_name, booker_phone, booker_email, created_at)
         values (${token}, ${p!.id}, ${ctx.service.id}, ${tx.json(snapshot)}, ${input.doctorId}, ${input.startsAt}, ${endsAt}, 'held', ${holdUntil}, ${input.source ?? "site"},
-          ${input.booker?.relation ?? "self"}, ${input.booker?.name ?? null}, ${input.booker?.phone ?? null}, ${input.booker?.email ?? null}) returning id`;
+          ${input.booker?.relation ?? "self"}, ${input.booker?.name ?? null}, ${input.booker?.phone ?? null}, ${input.booker?.email ?? null}, ${now}) returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
       }

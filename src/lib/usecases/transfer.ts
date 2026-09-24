@@ -36,9 +36,9 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       const endsAt = addMinutes(input.startsAt, ctx.service.durationMin);
       const token = nanoid(21);
       const [nb] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, paid_at, transferred_from_id, source,
-          booker_relation, booker_name, booker_phone, booker_email)
+          booker_relation, booker_name, booker_phone, booker_email, created_at)
         select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, 'confirmed', paid_at, id, source,
-          booker_relation, booker_name, booker_phone, booker_email from bookings where id = ${old.id} returning id`;
+          booker_relation, booker_name, booker_phone, booker_email, ${now} from bookings where id = ${old.id} returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${nb!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
       }
