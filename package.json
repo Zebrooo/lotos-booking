@@ -17,7 +17,8 @@
     "db:up": "docker compose up -d db 2>/dev/null || docker-compose up -d db",
     "db:migrate": "node scripts/migrate.ts",
     "db:new": "bash scripts/new-migration.sh",
-    "audit": "pnpm audit --audit-level=low"
+    "audit": "pnpm audit --audit-level=low",
+    "db:seed": "node scripts/seed.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.1",
