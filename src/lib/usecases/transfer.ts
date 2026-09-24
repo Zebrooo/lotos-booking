@@ -9,8 +9,8 @@ import { transition } from "@/domain/transitions";
 import { canTransfer } from "@/domain/cancel";
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
 import { UsecaseError, isExclusionViolation } from "./errors";
-import { loadSettings } from "./settings";
-import { loadSlotContext, slotSettings } from "./hold";
+import { loadSettings, slotSettings } from "./settings";
+import { loadSlotContext } from "./hold";
 import { findBooking } from "./cancel";
 
 export async function transferBooking(sql: Sql, clock: Clock, input: { token?: string; bookingId?: number; actor: "patient" | "clinic"; doctorId: number; startsAt: Date }): Promise<{ newBookingId: number; newToken: string }> {
