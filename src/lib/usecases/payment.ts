@@ -20,7 +20,7 @@ export async function createPayment(sql: Sql, deps: { payment: PaymentProvider; 
   const [existing] = await sql<{ id: number; payUrl: string | null }[]>`select id, pay_url from payments where booking_id = ${b.id} and status = 'created' and pay_url is not null order by id desc limit 1`;
   if (existing?.payUrl) return { paymentId: existing.id, payUrl: existing.payUrl };
   const amount = b.service.prepayKopecks;
-  const [row] = await sql<{ id: number }[]>`insert into payments (booking_id, provider, amount_kopecks) values (${b.id}, ${deps.payment.name}, ${amount}) returning id`;
+  const [row] = await sql<{ id: number }[]>`insert into payments (booking_id, provider, amount_kopecks, created_at) values (${b.id}, ${deps.payment.name}, ${amount}, ${now}) returning id`;
   try {
     const created = await deps.payment.createPayment({ paymentId: row!.id, amountKopecks: amount, description: `Предоплата: ${b.service.title}`, returnUrl: input.returnUrl, email: b.email });
     await sql`update payments set external_id = ${created.externalId}, pay_url = ${created.payUrl} where id = ${row!.id}`;
