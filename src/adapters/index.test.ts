@@ -8,6 +8,10 @@ describe("loadAdapters", () => {
     expect(a.fiscal.name).toBe("log");
     expect(a.notify.name).toBe("log");
   });
+  it("пустые значения в .env — как незаданные", () => {
+    const a = loadAdapters({ NODE_ENV: "development", PAYMENT_PROVIDER: "", FISCALIZER: "", NOTIFIER: "" });
+    expect([a.payment.name, a.fiscal.name, a.notify.name]).toEqual(["fake", "log", "log"]);
+  });
   it("заглушка платежей в production запрещена", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/production/);
   });
