@@ -21,4 +21,14 @@ describe("appConfig", () => {
   it("в production без адреса сайта и контактов клиники — ошибка", () => {
     expect(() => appConfig({ NODE_ENV: "production" })).toThrow(/SITE_URL, CLINIC_ADDRESS, CLINIC_PHONE/);
   });
+  it("мягкий режим для отображения не падает при сборке", () => {
+    const c = appConfig({ NODE_ENV: "production" }, { strict: false });
+    expect(c.clinic.name).toBe("Медицинский центр «Лотос»");
+  });
+  it("пустые значения в .env считаются незаданными", () => {
+    const c = appConfig({ NODE_ENV: "development", CLINIC_NAME: "", CLINIC_PHONE: "", SITE_URL: "", JOBS_INTERVAL_MS: "" });
+    expect(c.clinic.name).toBe("Медицинский центр «Лотос»");
+    expect(c.clinic.phone).toContain("демо");
+    expect(c.siteUrl).toBe("http://localhost:3000");
+  });
 });
