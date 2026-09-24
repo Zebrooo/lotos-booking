@@ -14,6 +14,8 @@ export type BookingView = {
   doctor: { title: string; specialty: string | null };
   startsAt: Date; endsAt: Date; holdUntil: Date | null; paidAt: Date | null;
   money: MoneyState; prepayKopecks: number; refundPending: boolean;
+  /** После переноса — токен новой записи, иначе null. */
+  transferredToToken: string | null;
   canPay: boolean; canCancel: boolean; canTransfer: boolean; cancelPreview: CancelOutcome;
   freeCancelHours: number; arriveEarlyMinutes: number;
   patientName: string; emailMasked: string;
@@ -47,6 +49,9 @@ export async function getBookingView(sql: Db, clock: Clock, token: string): Prom
   const settings = await loadSettings(sql);
   const ledger = await sql<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${b.id} order by id`;
   const [refund] = await sql<{ n: number }[]>`select count(*)::int as n from refunds where booking_id = ${b.id} and status <> 'done'`;
+  const [next] = b.status === "transferred"
+    ? await sql<{ token: string }[]>`select token from bookings where transferred_from_id = ${b.id} order by id desc limit 1`
+    : [];
   return {
     token: b.token, status: b.status, statusLabel: STATUS_LABEL[b.status],
     serviceId: b.serviceId, doctorId: b.resourceId,
@@ -54,6 +59,7 @@ export async function getBookingView(sql: Db, clock: Clock, token: string): Prom
     doctor: { title: b.doctorTitle, specialty: b.specialty },
     startsAt: b.startsAt, endsAt: b.endsAt, holdUntil: b.holdUntil, paidAt: b.paidAt,
     money: moneyState(ledger), prepayKopecks: b.service.prepayKopecks, refundPending: (refund?.n ?? 0) > 0,
+    transferredToToken: next?.token ?? null,
     canPay: b.status === "held" && b.holdUntil != null && b.holdUntil > now,
     canCancel: transition(b.status, "cancel", "patient").ok,
     canTransfer: transition(b.status, "transfer", "patient").ok && canTransfer({ now, startsAt: b.startsAt, actor: "patient", settings }),

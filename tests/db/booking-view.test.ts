@@ -4,6 +4,7 @@ import type { Sql } from "@/lib/db/client";
 import { holdSlot } from "@/lib/usecases/hold";
 import { createPayment, applyPaymentNotification } from "@/lib/usecases/payment";
 import { cancelBooking } from "@/lib/usecases/cancel";
+import { transferBooking } from "@/lib/usecases/transfer";
 import { getBookingView } from "@/lib/queries/booking-view";
 import { createFakePaymentProvider } from "@/adapters/payment-fake";
 import { localTime } from "@/domain/time";
@@ -66,5 +67,14 @@ describe("getBookingView", () => {
     const v = await getBookingView(sql, at("2026-09-15T05:01:00Z"), h.token);
     expect(v).toMatchObject({ status: "cancelled", canPay: false, canCancel: false, canTransfer: false, refundPending: true });
     expect(await getBookingView(sql, at("2026-09-15T05:01:00Z"), "нет-такого-токена")).toBeNull();
+  });
+
+  it("перенесённая запись ведёт на новую", async () => {
+    const { s, h } = await paid();
+    const t = await transferBooking(sql, at("2026-09-15T05:00:00Z"), { token: h.token, actor: "patient", doctorId: s.doctorId, startsAt: localTime("2026-09-18", 900) });
+    const v = await getBookingView(sql, at("2026-09-15T05:01:00Z"), h.token);
+    expect(v).toMatchObject({ status: "transferred", transferredToToken: t.newToken, canCancel: false });
+    const fresh = await getBookingView(sql, at("2026-09-15T05:01:00Z"), t.newToken);
+    expect(fresh).toMatchObject({ status: "confirmed", transferredToToken: null, money: "advance_held" });
   });
 });
