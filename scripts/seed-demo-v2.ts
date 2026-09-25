@@ -64,7 +64,7 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
   const at = (day: IsoDay, h: number, m = 0) => localTime(day, h * 60 + m);
 
   await sql.begin(async tx => {
-    await tx`update settings set pay_model = 'both', horizon_days = 100, slot_step_min = null,
+    await tx`update settings set pay_model = 'both', horizon_days = 100, slot_step_min = null, free_cancel_hours = 0,
       booking_open_until = ${`${today.slice(0, 4)}-12-31`} where id = 1`;
 
     // ── Врачи, услуги, графики ────────────────────────────────────────────

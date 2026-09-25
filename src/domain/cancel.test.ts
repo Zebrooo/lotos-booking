@@ -51,3 +51,13 @@ describe("holdUntil", () => {
     expect(holdUntil({ now: new Date("2026-09-17T03:50:00Z"), startsAt, settings: hold }).toISOString()).toBe("2026-09-17T04:00:00.000Z");
   });
 });
+
+describe("порог 0 часов — возврат всегда, как в дизайне v2", () => {
+  const zero = { freeCancelHours: 0, coolingOffMinutes: 60 };
+  it("за час до приёма — возврат, перенос пациентом разрешён", () => {
+    const paidAt = new Date("2026-09-10T00:00:00Z");
+    expect(cancelOutcome({ now: new Date("2026-09-17T04:00:00Z"), startsAt, paidAt, actor: "patient", settings: zero }))
+      .toEqual({ kind: "refund", reason: "before_threshold" });
+    expect(canTransfer({ now: new Date("2026-09-17T04:00:00Z"), startsAt, actor: "patient", settings: zero })).toBe(true);
+  });
+});
