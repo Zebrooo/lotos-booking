@@ -41,18 +41,25 @@
 
 ## 3. Архитектура
 
-Один репозиторий, одно приложение Next.js 16 (App Router) и один фоновый
-процесс на той же кодовой базе. PostgreSQL 16 рядом в docker-compose.
+Один репозиторий, одно приложение Next.js 16 (App Router). Фоновый цикл
+работает в том же процессе сервера: его запускает `src/instrumentation.ts`.
+PostgreSQL 16 рядом в docker-compose.
 
 ```
 браузер пациента ──► Next.js: страницы записи, «Моя запись», серверные действия
 браузер админа   ──► Next.js: кабинет, серверные действия
 банк / касса     ──► Next.js: route handlers для уведомлений (webhook)
-фоновый процесс  ──► pg-boss: снятие просроченных удержаний, напоминания,
-                      опрос статуса платежа, повтор чеков и писем
+фоновый цикл     ──► раз в 30 секунд под pg_try_advisory_lock: снятие
+                      просроченных удержаний, опрос платежей, возвраты,
+                      чеки, напоминания, письма
                           │
-                     PostgreSQL 16 (одна база, pg-boss в своей схеме)
+                     PostgreSQL 16 (одна база)
 ```
+
+Отдельной очереди задач нет. Побочные эффекты лежат строками со статусом и
+счётчиком попыток в `receipts`, `refunds`, `notifications`, `payments`; эти
+таблицы и есть очередь (решение 24 сентября 2026, `14-plan-v1-patient.md`).
+При нескольких экземплярах сервера проход делает тот, кто взял блокировку.
 
 Код делится на четыре слоя, зависимости только сверху вниз:
 
@@ -149,7 +156,6 @@ identity`, наружу для пациента — непредсказуемы
   `template`, `status`, `attempts`, `last_error`, `sent_at`.
 - `audit`: кто, что, когда сделал в кабинете: `admin_id`, `action`,
   `booking_id`, `details`.
-- Таблицы pg-boss в схеме `pgboss`.
 
 ## 5. Состояния
 
@@ -216,13 +222,17 @@ held ──► confirmed ──► done
 
 1. Пациент выбирает услугу, затем врача из тех, кто её оказывает, либо
    сначала врача. Видит дни с окнами на `horizon_days` вперёд и цену.
-2. Выбирает окно. Сервер в одной транзакции создаёт `bookings` со статусом
-   `held` и строки `booking_resources`; исключающее ограничение отбрасывает
-   второго. Пациенту показывается таймер удержания.
-3. Заполняет данные: кто придёт, кто записывает, телефон, почта, дата
-   рождения. Читает памятку подготовки, если есть. Ставит две галочки.
-4. Нажимает «Оплатить». Сервер создаёт `payments` и запрашивает у
-   `PaymentProvider` ссылку. Пациент уходит на оплату.
+2. Выбирает окно и заполняет данные: кто придёт, кто записывает, телефон,
+   почта, дата рождения. Читает памятку подготовки, если есть. Ставит две
+   галочки. Окно на этом шаге не занято; если его успели занять, форма
+   говорит об этом и предлагает выбрать другое.
+3. Нажимает «Перейти к оплате». Сервер в одной транзакции создаёт `bookings`
+   со статусом `held` и строки `booking_resources`; исключающее ограничение
+   отбрасывает второго. Затем создаёт `payments` и запрашивает у
+   `PaymentProvider` ссылку. Пациент уходит на оплату; удержание длится
+   `hold_minutes`, таймер виден на странице записи.
+4. Если провайдер недоступен, удержание остаётся, а оплатить можно кнопкой
+   на странице записи, пока не истёк срок.
 5. Уведомление от провайдера приходит в route handler: проверка подписи,
    сверка суммы, поиск платежа по `external_id`. В транзакции: `payments.paid`,
    `bookings.confirmed`, `ledger.advance`. Затем в очередь: чек аванса,
@@ -269,10 +279,11 @@ held ──► confirmed ──► done
 |---|---|
 | `/` | услуги и врачи, поиск по фамилии и специальности |
 | `/zapis/[serviceId]` | врач, день, окно |
-| `/zapis/[token]/dannye` | данные, памятка, согласия, таймер удержания |
-| `/zapis/[token]/oplata` | переход к оплате, ожидание подтверждения |
-| `/moya-zapis/[token]` | реквизиты, отмена, перенос, ссылка на чек |
-| `/dokumenty/*` | оферта, политика, согласия, сведения о лицензии и врачах |
+| `/zapis/[serviceId]/dannye` | данные, памятка, согласия, переход к оплате |
+| `/moya-zapis/[token]` | статус, оплата с таймером удержания, отмена с объяснением последствий |
+| `/moya-zapis/[token]/perenos` | перенос на другое время или к другому врачу услуги |
+| `/dokumenty/[slug]` | условия предоплаты и согласие из базы; оферта и политика — после юриста |
+| `/dev/oplata/[externalId]` | тестовая оплата, только при заглушке платежей и вне production |
 
 **Администратор**, вход по почте и паролю, сессия в подписанной cookie:
 
@@ -337,8 +348,9 @@ interface Clock { now(): Date }      // в тестах подменяется
 
 - Уведомление провайдера обрабатывается по `(provider, external_id)`; повтор
   возвращает успех без изменений.
-- Чеки и письма — задачи pg-boss с повторами и журналом попыток; сбой
-  внешнего сервиса не откатывает подтверждение записи.
+- Чеки, письма и возвраты — строки с попытками: до пяти попыток, затем
+  `failed` для разбора администратором; сбой внешнего сервиса не откатывает
+  подтверждение записи.
 - Перенос, отмена и подтверждение — одна транзакция каждый, с проверкой
   текущего статуса в `where`; проигравшая гонка получает понятную ошибку.
 - Если провайдер недоступен при создании платежа, удержание остаётся, пациент
@@ -356,22 +368,25 @@ interface Clock { now(): Date }      // в тестах подменяется
 
 ## 13. Технологии и структура
 
-Отличия от `../tech/stack.md`: без `drizzle-orm`, `drizzle-kit` и `luxon`;
-TypeScript 5.9 вместо 7 до проверки совместимости инструментов; почта через
-`nodemailer`. Остальное по стеку: Next.js 16, React 19, Tailwind 4, zod 4,
-`postgres`, pg-boss, jose, argon2, pino, nanoid, vitest, Playwright.
+Отличия от `../tech/stack.md`: без `drizzle-orm`, `drizzle-kit`, `luxon` и
+`pg-boss`; TypeScript 5.9 вместо 7; ESLint 9 вместо 10; почта через
+`nodemailer`. Остальное по стеку: Next.js 16, React 19, Tailwind 4,
+`postgres`, jose, argon2, pino, nanoid, vitest, Playwright.
 
 ```
-src/domain/       time.ts slots.ts transitions.ts cancel.ts money.ts
-src/ports/        schedule.ts payment.ts fiscal.ts notify.ts clock.ts
-src/adapters/     schedule-own/ payment-fake/ fiscal-log/ notify-smtp/ notify-log/
-src/lib/db/       client.ts sql/ (запросы по сценариям)
-src/lib/usecases/ hold.ts confirm.ts cancel.ts transfer.ts clinic-cancel.ts ...
-src/app/          страницы и route handlers
-src/worker.ts     pg-boss: задачи из раздела 7
-migrations/       YYYYMMDDHHMMSS_name.sql
-scripts/          new-migration.sh migrate.sh
-tests/db/  tests/e2e/
+src/domain/        time.ts slots.ts transitions.ts cancel.ts money.ts
+src/ports/         payment.ts fiscal.ts notify.ts clock.ts
+src/adapters/      payment-fake.ts fiscal-log.ts notify-log.ts notify-smtp.ts index.ts
+src/lib/db/        client.ts
+src/lib/queries/   availability.ts catalog.ts booking-view.ts consents.ts
+src/lib/usecases/  hold.ts payment.ts book.ts cancel.ts transfer.ts expire.ts outcome.ts ...
+src/lib/jobs/      sweeps.ts runner.ts start.ts
+src/lib/email/     render.ts
+src/app/           страницы и route handlers
+src/instrumentation.ts  запуск фонового цикла
+migrations/        YYYYMMDDHHMMSS_name.sql
+scripts/           migrate.ts seed.ts seed-demo.sql new-migration.sh
+tests/db/
 docker-compose.yml  Dockerfile  .github/workflows/ci.yml
 ```
 
