@@ -2,7 +2,7 @@
 // на весь диапазон дней, дальше чистый расчёт по дням (src/domain/slots.ts).
 import type { Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
-import { type IsoDay, addDays, localTime } from "@/domain/time";
+import { type IsoDay, addDays, localTime, localDay } from "@/domain/time";
 import { freeSlots, type Rule, type ScheduleException, type Busy, type Slot } from "@/domain/slots";
 import { UsecaseError } from "@/lib/usecases/errors";
 import { loadSettings, slotSettings } from "@/lib/usecases/settings";
@@ -42,10 +42,11 @@ export async function availableSlots(
   sql: Db, clock: Clock, input: { serviceId: number; doctorId: number; fromDay: IsoDay; days: number },
 ): Promise<{ day: IsoDay; slots: Slot[] }[]> {
   const now = clock.now();
-  const settings = slotSettings(await loadSettings(sql));
+  const loaded = await loadSettings(sql);
   const days = Array.from({ length: Math.max(0, input.days) }, (_, i) => addDays(input.fromDay, i));
   if (days.length === 0) return [];
   const ctx = await loadSlotRange(sql, { serviceId: input.serviceId, doctorId: input.doctorId, fromDay: days[0]!, toDay: days.at(-1)! });
+  const settings = slotSettings(loaded, ctx.service.durationMin, localDay(now));
   return days.map(day => ({
     day,
     slots: freeSlots({ ...ctx, durationMin: ctx.service.durationMin, day, now, settings }),

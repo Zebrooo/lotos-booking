@@ -28,7 +28,7 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       await tx`update bookings set status = 'transferred', hold_until = null where id = ${old.id}`;
       await tx`update booking_resources set active = false where booking_id = ${old.id}`;
       const ctx = await loadSlotContext(tx, { serviceId: old.serviceId, doctorId: input.doctorId, day: localDay(input.startsAt) });
-      const check = isSlotFree({ ...ctx, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings) });
+      const check = isSlotFree({ ...ctx, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings, ctx.service.durationMin, localDay(now)) });
       if (!check.ok) {
         const code = ({ closed: "slot_closed", past: "slot_past", beyond_horizon: "beyond_horizon", taken: "slot_taken" } as const)[check.reason];
         throw new UsecaseError(code, "окно недоступно");
