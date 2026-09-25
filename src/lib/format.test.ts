@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rub, relName, dayLong, nearestLabel, hhmmOf, wdShort, monShort, plural, splitName, shortName, dateNum } from "./format";
+import { rub, relName, dayLong, nearestLabel, hhmmOf, wdShort, monShort, plural, splitName, shortName, dateNum, lowerFirst, accusativeName } from "./format";
 import { localTime } from "@/domain/time";
 
 const today = "2026-09-24";
@@ -30,5 +30,20 @@ describe("форматы как в прототипе", () => {
     expect(plural(12, "врач", "врача", "врачей")).toBe("врачей");
     expect(splitName("Жаворонкова Елена Викторовна")).toEqual({ surname: "Жаворонкова", given: "Елена Викторовна" });
     expect(shortName("Жаворонкова Елена Викторовна")).toBe("Жаворонкова Е. В.");
+  });
+});
+
+describe("lowerFirst", () => {
+  it("обычные слова — со строчной, аббревиатуры — как есть", () => {
+    expect(lowerFirst("Консультация эндокринолога")).toBe("консультация эндокринолога");
+    expect(lowerFirst("УЗИ сердца (ЭхоКГ)")).toBe("УЗИ сердца (ЭхоКГ)");
+    expect(lowerFirst("ЭКГ")).toBe("ЭКГ");
+  });
+});
+
+describe("accusativeName", () => {
+  it("винительный падеж имён для подписи «За вас и …»", () => {
+    expect(["Мария", "Маша", "Иван", "Илья", "Игорь", "Андрей", "Никита"].map(accusativeName))
+      .toEqual(["Марию", "Машу", "Ивана", "Илью", "Игоря", "Андрея", "Никиту"]);
   });
 });

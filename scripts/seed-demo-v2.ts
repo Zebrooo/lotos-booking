@@ -126,7 +126,7 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
       const startsAt = at(b.day, b.h, b.m);
       const endsAt = new Date(startsAt.getTime() + s.dur * 60_000);
       const createdAt = b.createdAt ?? new Date(startsAt.getTime() - 2 * 86400_000);
-      const paidAt = b.paid ? new Date(createdAt.getTime() + 600_000) : null;
+      const paidAt = b.paid ? new Date(Math.min(createdAt.getTime() + 600_000, now.getTime())) : null;
       const resourceId = b.resourceId ?? doc[b.doc]!;
       const [bk] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at,
           status, hold_until, paid_at, source, booker_relation, booker_name, booker_phone, pay_mode, pay_deadline, phone_verified_at,
@@ -161,8 +161,10 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
         }
         if (b.status === "no_show") await tx`insert into ledger (booking_id, kind, amount_kopecks, channel, detail) values (${bk!.id}, 'retain', 40000, 'manual', 'неявка')`;
         if (b.cancel?.refunded) {
-          await tx`insert into ledger (booking_id, kind, amount_kopecks, payment_id, channel, detail, created_at)
-            values (${bk!.id}, 'refund', 40000, ${paymentId}, ${b.paid}, 'на карту', ${createdAt})`;
+          const [rl] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id, channel, detail, created_at)
+            values (${bk!.id}, 'refund', 40000, ${paymentId}, ${b.paid}, 'на карту', ${createdAt}) returning id`;
+          await tx`insert into receipts (booking_id, kind, ledger_id, amount_kopecks, phone, provider, status, attempts)
+            values (${bk!.id}, 'refund', ${rl!.id}, 40000, ${e164(b.phone)}, 'log', 'sent', 1)`;
         }
       }
       return { id: bk!.id, patientId: p!.id };

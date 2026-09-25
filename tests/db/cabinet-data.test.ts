@@ -3,6 +3,7 @@ import { testDb, truncateAll } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import { seedDemoV2 } from "../../scripts/seed-demo-v2.ts";
 import { cabinetData } from "@/lib/cabinet/data";
+import { cancelBooking } from "@/lib/usecases/cancel";
 
 let sql: Sql;
 beforeAll(() => { sql = testDb(); });
@@ -54,7 +55,18 @@ describe("данные кабинета", () => {
     expect(d.payments.find(p => p.what.includes("УЗИ сердца"))).toMatchObject({ what: "Предоплата · УЗИ сердца (ЭхоКГ), 2 октября", how: "Онлайн · карта или СБП" });
     expect(d.consents.map(c => c.title)).toEqual(["Согласие на обработку персональных данных", "Согласие на обработку данных ребёнка · Мария", "Условия предоплаты"]);
     expect(d.account).toEqual({ email: null, notifyRemind: true, notifyResults: true, notifyEmail: false });
+    expect(d.consents.map(c => c.href)).toEqual(["/dokumenty/soglasie-pd", "/dokumenty/soglasie-pd", "/dokumenty/predoplata"]);
     expect(d.taxRequested).toBe(false);
+    expect(d.taxReadyOn).toBeNull();
+  });
+
+  it("отмена сегодня: «Вы отменили сегодня» и возврат предоплаты", async () => {
+    await seedDemoV2(sql, now, { staffPassword: "x" });
+    const before = (await cabinetData(sql, clock, phone))!;
+    const paid = before.visits.find(v => v.kind === "up" && v.paid)!;
+    await cancelBooking(sql, clock, { bookingId: paid.id, actor: "patient" });
+    const after = (await cabinetData(sql, clock, phone))!;
+    expect(after.visits.find(v => v.id === paid.id)).toMatchObject({ kind: "cancelled", note: "Вы отменили сегодня · 400 ₽ вернутся на карту" });
   });
 
   it("чужой телефон — пустой кабинет без владельца", async () => {

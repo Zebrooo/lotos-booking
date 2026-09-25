@@ -7,7 +7,7 @@ import { localDay } from "@/domain/time";
 import { transition, type BookingStatus } from "@/domain/transitions";
 import { canTransfer } from "@/domain/cancel";
 import { loadSettings } from "@/lib/usecases/settings";
-import { dateNum, plural, shortName } from "@/lib/format";
+import { dateNum, plural, shortName, rub, lowerFirst } from "@/lib/format";
 import { cabinetOwner, type CabinetOwner } from "./session";
 
 export type CabPerson = { id: number; name: string; full: string; sub: string; initial: string; dob: string; isOwner: boolean };
@@ -21,21 +21,21 @@ export type CabVisit = {
 export type LabRow = [string, string, string, string, 0 | 1];
 export type DocBody = { sections?: [string, string][]; recs?: string[]; rows?: LabRow[]; next?: { text: string; doctorId: number; serviceId: number } | null };
 export type CabDoc = { id: number; who: number; kind: "concl" | "lab" | "study"; title: string; author: string; issuedOn: string; readyOn: string | null; isNew: boolean; body: DocBody };
-export type CabPayment = { at: Date; what: string; who: number; amountKopecks: number; how: string };
+export type CabPayment = { ledgerId: number; at: Date; what: string; who: number; amountKopecks: number; how: string };
 export type CabinetData = {
   owner: CabinetOwner; people: CabPerson[]; visits: CabVisit[]; docs: CabDoc[]; payments: CabPayment[];
   account: { email: string | null; notifyRemind: boolean; notifyResults: boolean; notifyEmail: boolean };
-  consents: { title: string; sub: string }[]; taxRequested: boolean;
+  consents: { title: string; sub: string; href: string }[]; taxRequested: boolean; taxReadyOn: string | null;
   recommendation: { text: string; who: string; doctorId: number; serviceId: number } | null;
 };
 
+const TAX_READY_DAYS = 7;
 const ageOn = (iso: string, today: string) => {
   const [by, bm, bd] = iso.split("-").map(Number) as [number, number, number];
   const [ty, tm, td] = today.split("-").map(Number) as [number, number, number];
   return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0);
 };
 const ru = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
-const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase("ru") + s.slice(1);
 /** Дочь или сын — по отчеству; иначе «Ребёнок». */
 function childLabel(full: string): string {
   const patr = full.split(/\s+/)[2] ?? "";
@@ -92,10 +92,11 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
     let note: string | null = null;
     if (b.status === "transferred") note = "Перенесена — предоплата перешла на новую запись";
     else if (b.status === "cancelled") {
-      const when = b.cancelledAt ? dateNum(localDay(b.cancelledAt)) : "";
+      const cday = b.cancelledAt ? localDay(b.cancelledAt) : null;
+      const when = cday ? (cday === today ? "сегодня" : dateNum(cday)) : "";
       note = b.cancelledBy === "clinic" ? `Клиника отменила${b.cancelReason ? `: ${b.cancelReason}` : ""}` : `Вы отменили ${when}`;
-      if (b.refunded) note += " · 400 ₽ вернули на карту";
-      else if (paid) note += " · 400 ₽ вернутся на карту";
+      if (b.refunded) note += ` · ${rub(b.service.prepayKopecks)} вернули на карту`;
+      else if (paid) note += ` · ${rub(b.service.prepayKopecks)} вернутся на карту`;
     }
     const deadline = b.status === "held" ? b.holdUntil : b.payDeadline;
     return {
@@ -115,16 +116,16 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
     isNew: !d.read && !(d.readyOn && d.readyOn > today), body: d.body,
   }));
 
-  const ledger = await sql<{ bookingId: number; kind: string; amountKopecks: number; channel: string | null; createdAt: Date }[]>`
-    select booking_id, kind, amount_kopecks, channel, created_at from ledger
+  const ledger = await sql<{ id: number; bookingId: number; kind: string; amountKopecks: number; channel: string | null; createdAt: Date }[]>`
+    select id, booking_id, kind, amount_kopecks, channel, created_at from ledger
     where booking_id in ${sql(rows.length ? rows.map(r => r.id) : [0])} and kind in ('advance', 'refund') order by created_at desc, id desc`;
   const byId = new Map(rows.map(r => [r.id, r]));
   const payments: CabPayment[] = ledger.map(l => {
     const b = byId.get(l.bookingId)!;
     const svc = lowerFirst(b.service.title);
-    if (l.kind === "refund") return { at: l.createdAt, who: b.patientId, amountKopecks: -l.amountKopecks, what: `Возврат предоплаты · ${svc}`, how: "На карту" };
+    if (l.kind === "refund") return { ledgerId: l.id, at: l.createdAt, who: b.patientId, amountKopecks: -l.amountKopecks, what: `Возврат предоплаты · ${svc}`, how: "На карту" };
     const upcoming = b.startsAt > now;
-    return { at: l.createdAt, who: b.patientId, amountKopecks: l.amountKopecks,
+    return { ledgerId: l.id, at: l.createdAt, who: b.patientId, amountKopecks: l.amountKopecks,
       what: `Предоплата · ${upcoming ? b.service.title : svc}${upcoming ? `, ${dateNum(localDay(b.startsAt))}` : ""}`,
       how: l.channel === "cash" ? "Наличные, регистратура" : "Онлайн · карта или СБП" };
   });
@@ -140,14 +141,15 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
     .sort((a, b) => (a.kind === "personal_data" ? 0 : 1) - (b.kind === "personal_data" ? 0 : 1) || Number(b.patientId === owner.id) - Number(a.patientId === owner.id))
     .map(c => {
       const person = people.find(p => p.id === c.patientId);
-      if (c.kind === "prepay_terms") return { title: "Условия предоплаты", sub: `Приняты ${d(c.acceptedAt)}` };
-      return { title: person && !person.isOwner ? `Согласие на обработку данных ребёнка · ${person.name}` : "Согласие на обработку персональных данных",
+      if (c.kind === "prepay_terms") return { title: "Условия предоплаты", sub: `Приняты ${d(c.acceptedAt)}`, href: "/dokumenty/predoplata" };
+      return { href: "/dokumenty/soglasie-pd", title: person && !person.isOwner ? `Согласие на обработку данных ребёнка · ${person.name}` : "Согласие на обработку персональных данных",
         sub: `Подписано онлайн ${d(c.acceptedAt)} · ред. от ${d(c.publishedAt)}` };
     })
     .filter((c, i, all) => all.findIndex(x => x.title === c.title) === i);
 
-  const [tax] = await sql<{ n: number }[]>`select count(*)::int as n from cabinet_requests where phone = ${phone} and kind = 'tax'
-    and created_at >= ${`${today.slice(0, 4)}-01-01`}`;
+  // Справку для вычета готовим за неделю (по закону — до 30 дней): срок показываем в кабинете.
+  const [tax] = await sql<{ at: Date }[]>`select created_at as at from cabinet_requests where phone = ${phone} and kind = 'tax'
+    and created_at >= ${`${today.slice(0, 4)}-01-01`} order by created_at desc limit 1`;
 
   const withNext = docs.filter(x => x.who === owner.id && x.kind === "concl" && x.body.next).sort((a, b) => b.issuedOn.localeCompare(a.issuedOn))[0];
   let recommendation: CabinetData["recommendation"] = null;
@@ -160,6 +162,6 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
   return {
     owner, people, visits, docs, payments,
     account: { email: acc?.email ?? null, notifyRemind: acc?.notifyRemind ?? true, notifyResults: acc?.notifyResults ?? true, notifyEmail: acc?.notifyEmail ?? false },
-    consents, taxRequested: (tax?.n ?? 0) > 0, recommendation,
+    consents, taxRequested: !!tax, taxReadyOn: tax ? localDay(new Date(tax.at.getTime() + TAX_READY_DAYS * 86_400_000)) : null, recommendation,
   };
 }
