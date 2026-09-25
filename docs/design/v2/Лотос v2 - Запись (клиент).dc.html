@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="lotos-soft.css">
+<style>body{margin:0;background:#ffffff}a{color:#0a4ba8}a:hover{color:#073a85}</style>
+</helmet>
+<div style="min-height:100vh;background:var(--color-bg);display:flex;justify-content:center">
+<div style="width:100%;max-width:{{ frameWidth }};background:var(--color-bg);border-left:{{ frameBorder }};border-right:{{ frameBorder }};min-height:100vh;display:flex;flex-direction:column">
+
+<header style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--color-divider)">
+  <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-right:auto">
+    <div style="width:22px;height:22px;background:var(--color-accent);border-radius:60% 0 60% 0;transform:rotate(-45deg)"></div>
+    <div style="display:flex;flex-direction:column;line-height:1.05">
+      <span style="font-weight:800;font-size:19px;letter-spacing:-0.02em">ЛОТОС</span>
+      <span style="font-size:11px;color:var(--color-neutral-700)">медицинский центр</span>
+    </div>
+  </div>
+  <nav style="display:flex;gap:8px 18px;align-items:center;font-size:14px;flex-wrap:wrap">
+    <span onClick="{{ goHome }}" style="cursor:pointer;font-weight:600;color:{{ navBookColor }}">Запись к врачу</span>
+    <span onClick="{{ goCab }}" style="cursor:pointer;font-weight:600;display:flex;align-items:center;gap:8px;color:{{ navCabColor }}">
+      <span style="width:30px;height:30px;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">
+        <sc-if value="{{ authed }}" hint-placeholder-val="{{ false }}">Е</sc-if>
+        <sc-if value="{{ notAuthed }}" hint-placeholder-val="{{ true }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg></sc-if>
+      </span>Личный кабинет</span>
+    <a href="tel:+79000230550" style="font-weight:700;text-decoration:none;color:var(--color-text)">+7 900 023-05-50</a>
+  </nav>
+</header>
+
+<sc-if value="{{ showStepper }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:4px;margin:12px 24px 0;border-radius:999px;background:var(--color-surface)">
+  <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
+    <div style="padding:9px 14px;display:flex;gap:8px;align-items:baseline;justify-content:center;border-radius:999px;background:{{ st.bg }};color:{{ st.fg }}">
+      <span style="font-weight:800;font-size:13px">{{ st.n }}</span>
+      <span style="font-size:13px;display:{{ st.labelDisplay }}">{{ st.label }}</span>
+    </div>
+  </sc-for>
+</div>
+</sc-if>
+
+<main style="flex:1;padding:32px 24px 56px">
+
+<sc-if value="{{ isSearch }}" hint-placeholder-val="{{ true }}">
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:760px">
+      <h1 style="margin:0;font-size:{{ h1Size }};line-height:1.02;letter-spacing:-0.03em">Запись к врачу</h1>
+      <p style="margin:0;font-size:16px;color:var(--color-neutral-800);text-wrap:pretty">Найдите врача по фамилии или специальности, выберите услугу и свободное время. Предоплата — 400 ₽, она засчитывается в стоимость приёма.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;max-width:760px;border-radius:999px;background:var(--color-surface);padding:0 8px 0 20px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-600)" strokeWidth="2.4" strokeLinecap="round" style="flex:none"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input class="input" value="{{ q }}" onChange="{{ onQ }}" placeholder="Фамилия врача, специальность или услуга" style="border:0;box-shadow:none;min-height:56px;font-size:17px;padding:0 12px;background:transparent;flex:1;min-width:0">
+      <sc-if value="{{ hasQ }}" hint-placeholder-val="{{ false }}"><button class="btn" onClick="{{ clearQ }}" style="padding:8px 14px;font-size:14px;background:#fff">Сбросить</button></sc-if>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <sc-for list="{{ specChips }}" as="c" hint-placeholder-count="9">
+        <button onClick="{{ c.onClick }}" style="font:inherit;font-size:13px;padding:6px 12px;cursor:pointer;border:1px solid var(--color-divider);background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--color-divider);padding-bottom:8px">
+      <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">{{ resultsLabel }}</span>
+      <span style="font-size:12px;color:var(--color-neutral-700)">Время — по Челябинску</span>
+    </div>
+    <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:24px 0;display:flex;flex-direction:column;gap:6px">
+        <span style="font-weight:800;font-size:20px">Никого не нашли</span>
+        <span style="color:var(--color-neutral-700)">Проверьте написание фамилии или выберите специальность из списка выше.</span>
+      </div>
+    </sc-if>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;background:transparent">
+      <sc-for list="{{ results }}" as="d" hint-placeholder-count="6">
+        <div onClick="{{ d.open }}" style="background:var(--color-bg);padding:18px;display:flex;flex-direction:column;gap:12px;cursor:pointer;border:1px solid var(--color-divider);border-radius:24px" style-hover="background:var(--color-neutral-100)">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:56px;height:68px;flex:none;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 2px,var(--color-neutral-200) 2px 7px);display:flex;align-items:flex-end;justify-content:center;font:9px ui-monospace,monospace;color:var(--color-neutral-700);padding-bottom:4px;border-radius:18px">фото</div>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <span style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ d.spec }}</span>
+              <span style="font-weight:800;font-size:18px;line-height:1.15">{{ d.surname }}</span>
+              <span style="font-size:13px;color:var(--color-neutral-800)">{{ d.given }}</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+            <sc-for list="{{ d.services }}" as="s" hint-placeholder-count="2">
+              <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--color-neutral-300)">
+                <span>{{ s.name }}</span><span style="font-weight:600;white-space:nowrap">{{ s.priceLabel }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ d.hasGroup }}" hint-placeholder-val="{{ false }}">
+            <span class="tag tag-outline" style="align-self:flex-start">Есть приём «при наборе группы»</span>
+          </sc-if>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+            <span style="font-size:13px"><span style="color:var(--color-neutral-700)">Ближайшее: </span><b>{{ d.nearest }}</b></span>
+            <span style="font-weight:800;font-size:14px;color:var(--color-accent)">Выбрать →</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isDoctor }}" hint-placeholder-val="{{ false }}">
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span onClick="{{ goHome }}" style="cursor:pointer;font-size:14px;color:var(--color-accent-700)">← Все врачи</span>
+    <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:28px">
+        <div style="display:flex;gap:20px;align-items:flex-end;padding-bottom:20px;border-bottom:1px solid var(--color-divider)">
+          <div style="width:112px;height:136px;flex:none;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 2px,var(--color-neutral-200) 2px 8px);display:flex;align-items:flex-end;padding:6px;font:10px ui-monospace,monospace;color:var(--color-neutral-700);border-radius:18px">фото врача, ч/б</div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+            <span style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ doc.spec }}</span>
+            <h2 style="margin:0;font-size:{{ h2Size }};letter-spacing:-0.025em;line-height:1.02">{{ doc.surname }}</h2>
+            <span style="font-size:16px">{{ doc.given }}</span>
+            <span style="font-size:13px;color:var(--color-neutral-700)">{{ doc.exp }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">1 — Услуга</span>
+          <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-neutral-300)">
+            <sc-for list="{{ svcOptions }}" as="s" hint-placeholder-count="2">
+              <label onClick="{{ s.pick }}" style="display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider);cursor:pointer">
+                <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ s.dotBorder }};background:{{ s.dotBg }};box-shadow:inset 0 0 0 4px var(--color-bg)"></span>
+                <span style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:15px">{{ s.name }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ s.durLabel }}</span></span>
+                <span style="font-weight:800;font-size:16px">{{ s.priceLabel }}</span>
+              </label>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">2 — День</span>
+            <button onClick="{{ toggleCal }}" style="font:inherit;font-size:13px;font-weight:700;border:0;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;background:{{ calBtnBg }};color:{{ calBtnFg }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>{{ calBtnLabel }}</button>
+          </div>
+          <sc-if value="{{ calClosed }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <button onClick="{{ stripPrev }}" disabled="{{ stripPrevDis }}" aria-label="Раньше" style="flex:none;width:36px;border:0;background:var(--color-surface);color:var(--color-text);cursor:pointer;font-size:18px;font-weight:700;opacity:{{ stripPrevOp }}">‹</button>
+            <div style="display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:2px">
+              <sc-for list="{{ days }}" as="dy" hint-placeholder-count="10">
+                <button onClick="{{ dy.pick }}" disabled="{{ dy.off }}" style="flex:1 0 60px;font:inherit;border:1px solid {{ dy.bd }};border-radius:20px;padding:10px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;cursor:pointer;background:{{ dy.bg }};color:{{ dy.fg }};opacity:{{ dy.op }}">
+                  <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em">{{ dy.wd }}</span>
+                  <span style="font-weight:800;font-size:20px;line-height:1">{{ dy.num }}</span>
+                  <span style="font-size:11px">{{ dy.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <button onClick="{{ stripNext }}" disabled="{{ stripNextDis }}" aria-label="Позже" style="flex:none;width:36px;border:0;background:var(--color-surface);color:var(--color-text);cursor:pointer;font-size:18px;font-weight:700;opacity:{{ stripNextOp }}">›</button>
+          </div>
+          </sc-if>
+          <sc-if value="{{ calOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:20px;display:flex;flex-direction:column;gap:14px;max-width:460px;background:#fff;box-shadow:var(--shadow-md)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <button onClick="{{ calPrev }}" disabled="{{ calPrevDis }}" aria-label="Предыдущий месяц" style="width:40px;height:40px;border:0;background:var(--color-surface);color:var(--color-text);cursor:pointer;font-size:18px;font-weight:700;opacity:{{ calPrevOp }}">‹</button>
+              <span style="font-weight:800;font-size:18px">{{ calTitle }}</span>
+              <button onClick="{{ calNext }}" disabled="{{ calNextDis }}" aria-label="Следующий месяц" style="width:40px;height:40px;border:0;background:var(--color-surface);color:var(--color-text);cursor:pointer;font-size:18px;font-weight:700;opacity:{{ calNextOp }}">›</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-700)"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>
+            <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">
+              <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+                <button onClick="{{ c.pick }}" disabled="{{ c.dis }}" title="{{ c.title }}" style="font:inherit;height:44px;border-radius:14px;border:{{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};cursor:{{ c.cur }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0;visibility:{{ c.vis }}">
+                  <span style="font-weight:{{ c.fw }};font-size:15px;line-height:1;text-decoration:{{ c.deco }}">{{ c.label }}</span>
+                  <span style="width:5px;height:5px;border-radius:50%;background:{{ c.dot }}"></span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--color-neutral-700)">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-2)"></span>есть свободное время</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-success)"></span>приём при наборе группы</span>
+              <span>Запись открыта до 31 декабря</span>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ dayIsGroup }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--color-neutral-300);padding:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;border-radius:24px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font-weight:800;font-size:16px">Приём состоится при наборе группы</span>
+              <span style="font-size:14px;text-wrap:pretty">Нужно минимум {{ group.min }} записи. Сейчас записано {{ group.have }}. Решение — до {{ group.decide }}. Если приём не состоится, предоплата вернётся полностью или вы выберете другое время.</span>
+            </div>
+            <span style="font-weight:800;font-size:28px;line-height:1">{{ group.have }}/{{ group.min }}</span>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">3 — Время · {{ dayTitle }}</span>
+          <sc-if value="{{ noSlots }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:14px;color:var(--color-neutral-700);padding:12px 0">Свободного времени нет. Выберите другой день.</span>
+          </sc-if>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px">
+            <sc-for list="{{ slots }}" as="sl" hint-placeholder-count="12">
+              <button onClick="{{ sl.pick }}" disabled="{{ sl.taken }}" style="font:inherit;font-size:15px;font-weight:600;padding:10px 12px;text-align:left;cursor:pointer;border:1px solid {{ sl.bd }};background:{{ sl.bg }};color:{{ sl.fg }};text-decoration:{{ sl.deco }}">{{ sl.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <aside style="flex:1 1 300px;max-width:420px;position:sticky;top:16px;background:var(--color-surface);padding:24px;border-radius:28px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Ваша запись</span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ summaryRows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.k }}</span><span style="font-weight:600;text-align:right">{{ r.v }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:14px">Предоплата сейчас</span><span style="font-weight:800;font-size:26px">400 ₽</span></div>
+        <span style="font-size:12px;color:var(--color-neutral-700);text-wrap:pretty">{{ restNote }}</span>
+        <button class="btn btn-primary" onClick="{{ toForm }}" disabled="{{ noSlot }}" style="padding:14px 16px;font-size:15px;justify-content:space-between">{{ ctaDoctor }}<span>→</span></button>
+      </aside>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isForm }}" hint-placeholder-val="{{ false }}">
+  <section style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+    <div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:28px">
+      <span onClick="{{ backDoctor }}" style="cursor:pointer;font-size:14px;color:var(--color-accent-700)">← Изменить время</span>
+      <h2 style="margin:0;font-size:{{ h2Size }};letter-spacing:-0.025em">Данные для записи</h2>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Кто придёт на приём</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+          <sc-for list="{{ whoOpts }}" as="w" hint-placeholder-count="3">
+            <button onClick="{{ w.pick }}" style="font:inherit;text-align:left;border-radius:20px;border:2px solid {{ w.bd }};padding:14px 16px;cursor:pointer;display:grid;grid-template-columns:20px minmax(0,1fr);gap:10px;align-items:start;background:{{ w.bg }};color:var(--color-text)">
+              <span style="width:20px;height:20px;border-radius:50%;border:2px solid {{ w.dot }};background:{{ w.dotBg }};box-shadow:inset 0 0 0 3px #fff;margin-top:1px"></span>
+              <span style="display:flex;flex-direction:column;gap:3px"><span style="font-weight:800;font-size:15px;line-height:1.25">{{ w.label }}</span><span style="font-size:12px;line-height:1.35;color:var(--color-neutral-700);text-wrap:pretty">{{ w.sub }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ whoOther }}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:13px;color:var(--color-neutral-800);text-wrap:pretty">Согласие на обработку данных взрослый даёт сам. Мы пришлём ему СМС со ссылкой — запись подтвердится после его согласия.</span>
+        </sc-if>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+        <sc-if value="{{ whoChild }}" hint-placeholder-val="{{ false }}">
+          <div class="field" style="grid-column:1/-1"><label>ФИО родителя или законного представителя</label><input class="input" value="{{ f.repFio }}" onChange="{{ on.repFio }}" onBlur="{{ blur.repFio }}" autoComplete="name" placeholder="Иванова Мария Петровна" style="min-height:48px;border-color:{{ eb.repFio }};background:{{ ebg.repFio }}"><span style="display:block;min-height:18px;margin-top:4px;font-size:12px;color:{{ ec.repFio }}">{{ er.repFio }}</span></div>
+        </sc-if>
+        <div class="field" style="grid-column:1/-1"><label>{{ fioLabel }}</label><input class="input" value="{{ f.fio }}" onChange="{{ on.fio }}" onBlur="{{ blur.fio }}" autoComplete="name" placeholder="Фамилия Имя Отчество" style="min-height:48px;border-color:{{ eb.fio }};background:{{ ebg.fio }}"><span style="display:block;min-height:18px;margin-top:4px;font-size:12px;color:{{ ec.fio }}">{{ er.fio }}</span></div>
+        <div class="field"><label>Дата рождения пациента</label><input class="input" inputMode="numeric" value="{{ f.dob }}" onChange="{{ on.dob }}" onBlur="{{ blur.dob }}" placeholder="дд.мм.гггг" style="min-height:48px;border-color:{{ eb.dob }};background:{{ ebg.dob }}"><span style="display:block;min-height:18px;margin-top:4px;font-size:12px;color:{{ ec.dob }}">{{ er.dob }}</span></div>
+        <div class="field"><label>{{ phoneLabel }}</label><input class="input" type="tel" inputMode="numeric" autoComplete="tel" value="{{ f.phone }}" onChange="{{ on.phone }}" onBlur="{{ blur.phone }}" placeholder="+7 900 000-00-00" style="min-height:48px;border-color:{{ eb.phone }};background:{{ ebg.phone }}"><span style="display:block;min-height:18px;margin-top:4px;font-size:12px;color:{{ ec.phone }}">{{ er.phone }}</span></div>
+        <sc-if value="{{ whoOther }}" hint-placeholder-val="{{ false }}">
+          <div class="field" style="grid-column:1/-1"><label>Телефон пациента — для согласия</label><input class="input" type="tel" inputMode="numeric" value="{{ f.phone2 }}" onChange="{{ on.phone2 }}" onBlur="{{ blur.phone2 }}" placeholder="+7 900 000-00-00" style="min-height:48px;border-color:{{ eb.phone2 }};background:{{ ebg.phone2 }}"><span style="display:block;min-height:18px;margin-top:4px;font-size:12px;color:{{ ec.phone2 }}">{{ er.phone2 }}</span></div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ showPayChoice }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Как внести предоплату 400 ₽</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;background:transparent">
+            <sc-for list="{{ payOpts }}" as="p" hint-placeholder-count="2">
+              <button onClick="{{ p.pick }}" disabled="{{ p.disabled }}" style="font:inherit;text-align:left;border-radius:20px;border:2px solid {{ p.bd }};padding:16px 18px;cursor:pointer;display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;background:{{ p.bg }};color:var(--color-text);opacity:{{ p.op }}">
+                <span style="width:20px;height:20px;border-radius:50%;border:2px solid {{ p.dot }};background:{{ p.dotBg }};box-shadow:inset 0 0 0 3px #fff;margin-top:1px"></span>
+                <span style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:800;font-size:16px;line-height:1.25">{{ p.title }}</span><span style="font-size:13px;line-height:1.4;color:var(--color-neutral-700);text-wrap:pretty">{{ p.sub }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasPrep }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--color-surface);padding:16px;display:flex;flex-direction:column;gap:6px;border-radius:24px">
+          <span style="font-weight:800;font-size:15px">Подготовка к исследованию</span>
+          <span style="font-size:14px;text-wrap:pretty">{{ svc.prep }}</span>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;flex-direction:column;gap:12px;padding:16px 18px;border-radius:20px;border:1px solid {{ consentBd }};background:{{ consentBg }}">
+        <label onClick="{{ toggleC1 }}" style="display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;cursor:pointer;font-size:14px;align-items:start">
+          <span style="width:22px;height:22px;border-radius:7px;border:2px solid {{ c1Border }};background:{{ c1Bg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">{{ c1Mark }}</span>
+          <span>Даю <a href="#" onClick="{{ noop }}">согласие на обработку персональных данных</a> {{ c1Subject }} (отдельный документ, ред. от 01.09.2026)</span>
+        </label>
+        <label onClick="{{ toggleC2 }}" style="display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;cursor:pointer;font-size:14px;align-items:start">
+          <span style="width:22px;height:22px;border-radius:7px;border:2px solid {{ c2Border }};background:{{ c2Bg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">{{ c2Mark }}</span>
+          <span>Ознакомлен с <a href="#" onClick="{{ noop }}">условиями предоплаты</a>: 400 ₽ засчитываются в стоимость приёма; при отмене предоплата возвращается</span>
+        </label>
+        <sc-if value="{{ consentErr }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:600;color:var(--color-danger);display:flex;gap:8px;align-items:center"><span style="width:18px;height:18px;border-radius:50%;background:var(--color-danger);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none">!</span>{{ er.consent }}</span></sc-if>
+      </div>
+    </div>
+
+    <aside style="flex:1 1 300px;max-width:420px;position:sticky;top:16px;background:var(--color-surface);padding:24px;border-radius:28px;display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Ваша запись</span>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ summaryRows }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.k }}</span><span style="font-weight:600;text-align:right">{{ r.v }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:14px">Предоплата</span><span style="font-weight:800;font-size:26px">400 ₽</span></div>
+      <span style="font-size:12px;color:var(--color-neutral-700)">{{ payNote }}</span>
+      <sc-if value="{{ formHasErr }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:600;color:var(--color-danger)">{{ formErrText }}</span></sc-if>
+      <button class="btn btn-primary" onClick="{{ submitForm }}" style="padding:14px 16px;font-size:15px;justify-content:space-between">Получить код по СМС<span>→</span></button>
+    </aside>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+  <section style="max-width:560px;display:flex;flex-direction:column;gap:24px">
+    <sc-if value="{{ payCode }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <h2 style="margin:0;font-size:{{ h2Size }};letter-spacing:-0.025em">Подтвердите телефон</h2>
+        <p style="margin:0;font-size:15px;text-wrap:pretty">Отправили СМС на {{ f.phone }}. В нём код и ссылка на оплату — если закроете страницу, оплатить можно по ссылке.</p>
+        <div class="field"><label>Код из СМС</label><input class="input" value="{{ code }}" onChange="{{ onCode }}" placeholder="4 цифры" style="min-height:56px;font-size:28px;font-weight:800;letter-spacing:0.3em;max-width:220px;border-color:{{ codeBorder }}"></div>
+        <span style="font-size:12px;color:{{ codeHintColor }}">{{ codeHint }}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onClick="{{ checkCode }}" style="padding:14px 16px;font-size:15px;min-width:240px;justify-content:space-between">{{ codeCta }}<span>→</span></button>
+          <button class="btn btn-secondary" onClick="{{ backForm }}" style="padding:14px 16px">Изменить номер</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ payBank }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Страница банка-эквайера · имитация</span>
+        <div style="border:1px solid var(--color-neutral-300);padding:24px;display:flex;flex-direction:column;gap:16px;background:var(--color-bg);border-radius:24px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800">Оплата услуг · ООО «ЦКЗ Лотос»</span><span style="font-weight:800;font-size:28px">400 ₽</span></div>
+          <div class="field"><label>Номер карты</label><input class="input" value="2200 0000 0000 4417" readonly="{{ true }}" style="min-height:44px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>Срок</label><input class="input" value="09/29" readonly="{{ true }}" style="min-height:44px"></div>
+            <div class="field"><label>CVC</label><input class="input" value="•••" readonly="{{ true }}" style="min-height:44px"></div>
+          </div>
+          <span style="font-size:12px;color:var(--color-neutral-700)">Кассовый чек на предоплату придёт в СМС и на почту, если укажете её.</span>
+          <button class="btn btn-primary" onClick="{{ doPay }}" style="padding:14px 16px;font-size:15px;justify-content:space-between">{{ payBtn }}<span>→</span></button>
+        </div>
+      </div>
+    </sc-if>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+  <section style="display:flex;flex-direction:column;gap:28px;max-width:900px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ doneKicker }}</span>
+      <h1 style="margin:0;font-size:{{ h1Size }};line-height:1.02;letter-spacing:-0.03em;text-wrap:balance">{{ doneTitle }}</h1>
+      <span style="font-size:17px">{{ doneSub }}</span>
+    </div>
+    <sc-if value="{{ isCashPending }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid var(--color-neutral-300);padding:18px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;border-radius:24px">
+        <div style="display:flex;flex-direction:column;gap:4px;max-width:520px">
+          <span style="font-weight:800;font-size:18px">Внесите 400 ₽ до {{ deadline }}</span>
+          <span style="font-size:14px;text-wrap:pretty">Наличными в регистратуре или картой по ссылке из СМС. Если не оплатить в срок, время освободится для других пациентов.</span>
+        </div>
+        <button class="btn btn-primary" onClick="{{ payNowFromDone }}" style="padding:12px 16px;justify-content:space-between;min-width:200px">Оплатить сейчас<span>→</span></button>
+      </div>
+    </sc-if>
+    <div style="background:var(--color-danger);color:#fff;padding:{{ warnPad }};border-radius:28px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-weight:800;font-size:{{ warnSize }};line-height:1.05;letter-spacing:-0.02em;text-transform:uppercase">Приходите за 10 минут до приёма</span>
+      <span style="font-weight:800;font-size:{{ warnSize2 }};line-height:1.15;text-transform:uppercase">Возьмите паспорт и деньги на оплату приёма — {{ restLabel }}</span>
+      <span style="font-size:15px">Перед приёмом в регистратуре нужно подписать документы.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;background:transparent">
+      <sc-for list="{{ doneFacts }}" as="x" hint-placeholder-count="4">
+        <div style="background:var(--color-bg);padding:14px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--color-divider);border-radius:24px"><span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">{{ x.k }}</span><span style="font-weight:800;font-size:17px">{{ x.v }}</span></div>
+      </sc-for>
+    </div>
+    <span style="font-size:14px;color:var(--color-neutral-800)">Напомним по СМС {{ reminderLabel }}. Отменить или перенести запись можно в любой момент на странице «Моя запись» — ссылка в СМС.</span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onClick="{{ goMy }}" style="padding:14px 16px;min-width:220px;justify-content:space-between">Моя запись<span>→</span></button>
+      <button class="btn btn-secondary" onClick="{{ newBooking }}" style="padding:14px 16px">Записать ещё кого-то</button>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isMy }}" hint-placeholder-val="{{ false }}">
+  <section style="display:flex;flex-direction:column;gap:24px;max-width:900px">
+    <sc-if value="{{ noBooking }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h2 style="margin:0">Моя запись</h2>
+        <span>Страница открывается по ссылке из СМС. Сначала запишитесь к врачу.</span>
+        <button class="btn btn-primary" onClick="{{ goHome }}" style="align-self:flex-start;padding:12px 16px">К выбору врача →</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasBooking }}" hint-placeholder-val="{{ false }}">
+      <span onClick="{{ goCab }}" style="cursor:pointer;font-size:14px;color:var(--color-accent-700)">← Личный кабинет</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Моя запись · № {{ bk.num }}</span>
+        <h2 style="margin:0;font-size:{{ h2Size }};letter-spacing:-0.025em;text-decoration:{{ myDeco }}">{{ bk.when }}</h2>
+        <span style="font-size:16px">{{ bk.docLine }}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;background:transparent">
+        <div style="background:var(--color-bg);padding:16px;display:flex;flex-direction:column;gap:6px;border:1px solid var(--color-divider);border-radius:24px"><span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Запись</span><span style="font-weight:800;font-size:20px;color:{{ stColor }}">{{ bkState }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ bkStateSub }}</span></div>
+        <div style="background:var(--color-bg);padding:16px;display:flex;flex-direction:column;gap:6px;border:1px solid var(--color-divider);border-radius:24px"><span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Предоплата</span><span style="font-weight:800;font-size:20px">{{ bkMoney }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ bkMoneySub }}</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ myRows }}" as="r" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:180px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.k }}</span><span style="font-weight:600">{{ r.v }}</span></div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ canAct }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onClick="{{ reschedule }}" style="padding:14px 16px;min-width:200px;justify-content:space-between">Перенести<span>→</span></button>
+          <button class="btn btn-secondary" onClick="{{ openCancel }}" style="padding:14px 16px;min-width:200px;justify-content:space-between;color:var(--color-danger)">Отменить запись<span>×</span></button>
+        </div>
+        <span style="font-size:13px;color:var(--color-neutral-700)">При переносе предоплата переходит на новую запись — платить повторно не нужно.</span>
+      </sc-if>
+    </sc-if>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isCab }}" hint-placeholder-val="{{ false }}">
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <sc-if value="{{ cabLogin }}" hint-placeholder-val="{{ false }}">
+      <div style="width:100%;max-width:460px;margin:8px auto 0;background:var(--color-surface);border-radius:32px;padding:32px;display:flex;flex-direction:column;gap:16px">
+        <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Личный кабинет</span>
+        <h2 style="margin:0;font-size:32px;line-height:1.05;letter-spacing:-0.025em">Вход по номеру телефона</h2>
+        <p style="margin:0;font-size:15px;color:var(--color-neutral-800);text-wrap:pretty">Укажите номер, который оставляли при записи. Пароль не нужен — пришлём код в СМС.</p>
+        <div class="field"><label>Телефон</label><input class="input" type="tel" inputMode="numeric" value="{{ loginPhone }}" onChange="{{ onLoginPhone }}" placeholder="+7 900 000-00-00" style="min-height:52px;font-size:18px;background:#fff;border-color:{{ loginPhoneBd }}"></div>
+        <sc-if value="{{ loginCodeStage }}" hint-placeholder-val="{{ false }}">
+          <div class="field"><label>Код из СМС</label><input class="input" inputMode="numeric" value="{{ loginCode }}" onChange="{{ onLoginCode }}" placeholder="••••" style="min-height:56px;max-width:200px;font-size:26px;font-weight:800;letter-spacing:0.3em;background:#fff;border-color:{{ loginCodeBd }}"></div>
+        </sc-if>
+        <span style="font-size:13px;color:{{ loginHintColor }}">{{ loginHint }}</span>
+        <button class="btn btn-primary" onClick="{{ loginNext }}" style="justify-content:space-between;padding:15px 22px;font-size:16px">{{ loginCta }}<span>→</span></button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ cabIn }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Личный кабинет</span>
+          <h1 style="margin:0;font-size:{{ h2Size }};line-height:1.02;letter-spacing:-0.03em">Здравствуйте, Елена</h1>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cabPeople }}" as="pp" hint-placeholder-count="3">
+            <button onClick="{{ pp.pick }}" style="font:inherit;display:flex;align-items:center;gap:8px;padding:5px 16px 5px 5px;cursor:pointer;border:2px solid {{ pp.bd }};background:{{ pp.bg }};color:var(--color-text)">
+              <span style="width:34px;height:34px;border-radius:50%;background:{{ pp.avBg }};color:{{ pp.avFg }};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">{{ pp.initial }}</span>
+              <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.15"><span style="font-weight:700;font-size:14px">{{ pp.name }}</span><span style="font-size:11px;color:var(--color-neutral-700)">{{ pp.sub }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:4px;padding:4px;background:var(--color-surface);border-radius:999px;overflow-x:auto;max-width:100%;align-self:flex-start">
+        <sc-for list="{{ cabTabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.pick }}" style="font:inherit;font-size:14px;font-weight:700;white-space:nowrap;border:0;padding:10px 18px;cursor:pointer;display:flex;align-items:center;gap:8px;flex:none;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.sh }}">{{ t.label }}<span style="display:{{ t.badgeDisplay }};min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--color-danger);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center">{{ t.badge }}</span></button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ tabOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">
+          <sc-if value="{{ hasNext }}" hint-placeholder-val="{{ true }}">
+            <div style="flex:2 1 440px;min-width:0;background:var(--color-accent);color:#fff;border-radius:32px;padding:28px;display:flex;flex-direction:column;gap:20px;min-height:260px">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.85">Ближайший приём · {{ next.whoName }}</span>
+                <span style="font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.16)">{{ next.payLabel }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-weight:800;font-size:{{ bigSize }};line-height:1;letter-spacing:-0.03em">{{ next.when }}</span>
+                <span style="font-size:17px;opacity:0.92;text-wrap:pretty">{{ next.line }}</span>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto">
+                <button onClick="{{ next.b1Run }}" style="font:inherit;font-weight:700;font-size:14px;border:0;padding:12px 22px;cursor:pointer;background:#fff;color:var(--color-accent)">{{ next.b1Label }}</button>
+                <button onClick="{{ next.b2Run }}" style="font:inherit;font-weight:700;font-size:14px;border:1px solid rgba(255,255,255,0.55);padding:12px 22px;cursor:pointer;background:transparent;color:#fff">{{ next.b2Label }}</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ noNext }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:2 1 440px;min-width:0;background:var(--color-surface);border-radius:32px;padding:28px;display:flex;flex-direction:column;gap:12px;justify-content:center">
+              <span style="font-weight:800;font-size:26px;letter-spacing:-0.02em">Предстоящих приёмов нет</span>
+              <button class="btn btn-primary" onClick="{{ goHome }}" style="align-self:flex-start">Записаться к врачу →</button>
+            </div>
+          </sc-if>
+          <div style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:16px">
+            <sc-for list="{{ pendingPays }}" as="pp" hint-placeholder-count="0">
+              <div style="border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:8px;background:var(--color-danger-100)">
+                <span style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-danger)">Ждёт оплаты до {{ pp.deadline }}</span>
+                <span style="font-weight:800;font-size:18px;line-height:1.2">{{ pp.when }}</span>
+                <span style="font-size:14px;color:var(--color-neutral-800)">{{ pp.line }}</span>
+                <button class="btn btn-primary" onClick="{{ pp.pay }}" style="align-self:flex-start;margin-top:4px">Оплатить 400 ₽</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{ hasLater }}" hint-placeholder-val="{{ true }}">
+              <div style="border:1px solid var(--color-divider);border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Дальше в плане</span>
+                <sc-for list="{{ later }}" as="lt" hint-placeholder-count="1">
+                  <div onClick="{{ lt.open }}" style="display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:18px;background:var(--color-surface);cursor:pointer" style-hover="background:var(--color-accent-100)">
+                    <span style="font-weight:800;font-size:15px">{{ lt.when }}</span>
+                    <span style="font-size:13px;color:var(--color-neutral-800)">{{ lt.line }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-for list="{{ processing }}" as="pr" hint-placeholder-count="1">
+              <div style="border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:6px;background:var(--color-surface)">
+                <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Результат готовится</span>
+                <span style="font-weight:800;font-size:17px">{{ pr.title }}</span>
+                <span style="font-size:14px;color:var(--color-neutral-800)">Будет готов {{ pr.when }} — пришлём СМС</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-weight:800;font-size:18px">Новые документы</span><span onClick="{{ toDocs }}" style="cursor:pointer;font-size:14px;font-weight:700;color:var(--color-accent)">Все →</span></div>
+            <sc-for list="{{ newDocs }}" as="nd" hint-placeholder-count="2">
+              <div onClick="{{ nd.open }}" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:12px 14px;border-radius:18px;background:var(--color-surface);cursor:pointer" style-hover="background:var(--color-accent-100)">
+                <span style="font-weight:700;font-size:15px">{{ nd.title }}</span>
+                <span style="font-size:11px;font-weight:800;color:var(--color-danger)">НОВОЕ</span>
+                <span style="font-size:12px;grid-column:1/-1;color:{{ nd.noteColor }}">{{ nd.note }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noNewDocs }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:var(--color-neutral-700)">Все документы просмотрены.</span></sc-if>
+          </div>
+          <sc-if value="{{ hasRec }}" hint-placeholder-val="{{ true }}">
+            <div style="background:var(--color-surface);border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:10px">
+              <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Рекомендация врача</span>
+              <span style="font-weight:800;font-size:20px;line-height:1.2;text-wrap:pretty">{{ rec.text }}</span>
+              <span style="font-size:14px;color:var(--color-neutral-800)">{{ rec.who }}</span>
+              <button class="btn btn-primary" onClick="{{ rec.book }}" style="align-self:flex-start;margin-top:auto">Выбрать время →</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabVisits }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ recTabs }}" as="rt" hint-placeholder-count="3">
+            <button onClick="{{ rt.pick }}" style="font:inherit;font-size:14px;font-weight:600;border:0;padding:8px 16px;cursor:pointer;display:flex;gap:6px;align-items:center;background:{{ rt.bg }};color:{{ rt.fg }}">{{ rt.label }}<span style="opacity:0.7">{{ rt.n }}</span></button>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ recList }}" as="v" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:{{ recCols }};gap:14px 18px;align-items:center;padding:16px;border:1px solid var(--color-divider);border-radius:24px;background:#fff">
+              <div style="width:68px;height:68px;border-radius:20px;background:{{ v.dateBg }};color:{{ v.dateFg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1"><span style="font-weight:800;font-size:24px">{{ v.dnum }}</span><span style="font-size:11px">{{ v.dmon }}</span></div>
+              <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                <span style="font-weight:800;font-size:17px;line-height:1.2">{{ v.svc }}</span>
+                <span style="font-size:14px;color:var(--color-neutral-800)">{{ v.line }}</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+                  <span class="tag" style="background:var(--color-surface);color:var(--color-neutral-800);font-weight:600">{{ v.whoName }}</span>
+                  <span class="tag" style="background:{{ v.stBg }};color:{{ v.stFg }};font-weight:600">{{ v.stLabel }}</span>
+                </div>
+                <sc-if value="{{ v.hasNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--color-neutral-700)">{{ v.note }}</span></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:{{ recAlign }};gap:10px;grid-column:{{ recActCol }}">
+                <span style="font-weight:800;font-size:16px;white-space:nowrap">{{ v.price }}</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:{{ recAlign }}">
+                  <sc-for list="{{ v.actions }}" as="a" hint-placeholder-count="2">
+                    <button onClick="{{ a.run }}" style="font:inherit;font-size:13px;font-weight:700;border:0;padding:9px 16px;cursor:pointer;background:{{ a.bg }};color:{{ a.fg }}">{{ a.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ recEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:28px;border-radius:24px;background:var(--color-surface);font-size:15px;color:var(--color-neutral-800)">{{ recEmptyText }}</div></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabDocs }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ docTabs }}" as="dt" hint-placeholder-count="4">
+            <button onClick="{{ dt.pick }}" style="font:inherit;font-size:14px;font-weight:600;border:0;padding:8px 16px;cursor:pointer;display:flex;gap:6px;align-items:center;background:{{ dt.bg }};color:{{ dt.fg }}">{{ dt.label }}<span style="opacity:0.7">{{ dt.n }}</span></button>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:14px">
+          <sc-for list="{{ docList }}" as="d" hint-placeholder-count="6">
+            <div onClick="{{ d.open }}" style="cursor:{{ d.cur }};border:1px solid var(--color-divider);border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:12px;background:#fff" style-hover="box-shadow:var(--shadow-md)">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <span style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:{{ d.typeBg }};color:{{ d.typeFg }}">{{ d.typeLabel }}</span>
+                <sc-if value="{{ d.isNew }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:800;color:var(--color-danger)">НОВОЕ</span></sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px"><span style="font-weight:800;font-size:18px;line-height:1.2">{{ d.title }}</span><span style="font-size:13px;color:var(--color-neutral-700)">{{ d.meta }}</span></div>
+              <span style="font-size:13px;font-weight:600;color:{{ d.noteColor }}">{{ d.note }}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--color-divider)">
+                <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--color-surface)">{{ d.whoName }}</span>
+                <span style="font-weight:700;font-size:14px;color:{{ d.ctaColor }}">{{ d.cta }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:var(--color-neutral-700);text-wrap:pretty">Заключения появляются после приёма, анализы — когда будут готовы. Оригиналы с печатью — в регистратуре.</span>
+      </sc-if>
+
+      <sc-if value="{{ tabPays }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-wrap:wrap;gap:16px">
+          <div style="flex:1 1 300px;background:var(--color-accent);color:#fff;border-radius:32px;padding:28px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.85">Оплачено в 2026 году</span>
+            <span style="font-weight:800;font-size:{{ bigSize }};line-height:1;letter-spacing:-0.03em">{{ payTotal }}</span>
+            <span style="font-size:14px;opacity:0.9">{{ payTotalSub }}</span>
+          </div>
+          <div style="flex:1 1 300px;background:var(--color-surface);border-radius:32px;padding:28px;display:flex;flex-direction:column;gap:10px">
+            <span style="font-weight:800;font-size:20px">Справка для налогового вычета</span>
+            <span style="font-size:14px;color:var(--color-neutral-800);text-wrap:pretty">Справка об оплате медицинских услуг для налоговой — за себя и за детей.</span>
+            <sc-if value="{{ taxNotReq }}" hint-placeholder-val="{{ true }}"><button class="btn btn-primary" onClick="{{ reqTax }}" style="align-self:flex-start;margin-top:auto">Заказать справку за 2026 год</button></sc-if>
+            <sc-if value="{{ taxReq }}" hint-placeholder-val="{{ false }}"><span style="margin-top:auto;font-size:14px;font-weight:600;color:var(--color-success);text-wrap:pretty">✓ Заявка принята. Справка будет готова до 1 октября — пришлём СМС, забрать можно в регистратуре.</span></sc-if>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;border:1px solid var(--color-divider);border-radius:24px;overflow:hidden">
+          <sc-for list="{{ payList }}" as="p" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:{{ payCols }};gap:12px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--color-divider)">
+              <span style="font-size:13px;color:var(--color-neutral-700);display:{{ payDateDisp }}">{{ p.date }}</span>
+              <div style="display:flex;flex-direction:column;min-width:0"><span style="font-weight:600;font-size:15px">{{ p.what }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ p.sub }}</span></div>
+              <span style="font-weight:800;font-size:16px;white-space:nowrap;text-align:right;color:{{ p.amtColor }}">{{ p.amount }}</span>
+              <a href="#" onClick="{{ noop }}" style="font-size:13px;font-weight:700;text-decoration:none">Чек</a>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabProfile }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;align-items:start">
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:14px">
+            <span style="font-weight:800;font-size:20px">Личные данные</span>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ profRows }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.k }}</span><span style="font-weight:600;text-align:right">{{ r.v }}</span></div>
+              </sc-for>
+            </div>
+            <div class="field"><label>Email для чеков</label><input class="input" type="email" value="{{ email }}" onChange="{{ onEmail }}" placeholder="name@mail.ru" style="min-height:46px"></div>
+            <span style="font-size:12px;color:var(--color-neutral-700);text-wrap:pretty">ФИО и дату рождения меняет регистратура по паспорту — чтобы документы и чеки совпадали.</span>
+          </div>
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:12px">
+            <span style="font-weight:800;font-size:20px">Семья</span>
+            <sc-for list="{{ family }}" as="m" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:20px;background:var(--color-surface)">
+                <span style="width:44px;height:44px;border-radius:50%;background:{{ m.avBg }};color:{{ m.avFg }};display:flex;align-items:center;justify-content:center;font-weight:800;flex:none">{{ m.initial }}</span>
+                <div style="display:flex;flex-direction:column;min-width:0;flex:1"><span style="font-weight:700;font-size:15px">{{ m.full }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ m.sub }}</span></div>
+                <button onClick="{{ m.book }}" style="font:inherit;font-size:13px;font-weight:700;border:0;padding:8px 14px;cursor:pointer;background:#fff;color:var(--color-accent);flex:none">Записать</button>
+              </div>
+            </sc-for>
+            <button onClick="{{ addChild }}" style="font:inherit;font-size:14px;font-weight:700;border:2px dashed var(--color-neutral-300);background:transparent;padding:12px;cursor:pointer;color:var(--color-accent);border-radius:20px">+ Добавить ребёнка</button>
+            <span style="font-size:12px;color:var(--color-neutral-700);text-wrap:pretty">Взрослые родственники ведут свой кабинет — их медицинские данные видны только им.</span>
+          </div>
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:10px">
+            <span style="font-weight:800;font-size:20px">Уведомления</span>
+            <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:6px 0">
+                <div style="display:flex;flex-direction:column"><span style="font-weight:600;font-size:15px">{{ n.label }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ n.sub }}</span></div>
+                <button onClick="{{ n.toggle }}" role="switch" aria-checked="{{ n.on }}" aria-label="{{ n.label }}" style="flex:none;width:48px;height:28px;border:0;padding:3px;cursor:pointer;display:flex;justify-content:{{ n.justify }};background:{{ n.track }}"><span style="width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)"></span></button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border:1px solid var(--color-divider);border-radius:28px;padding:24px;display:flex;flex-direction:column;gap:6px">
+            <span style="font-weight:800;font-size:20px;margin-bottom:4px">Согласия</span>
+            <sc-for list="{{ consents }}" as="c" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                <div style="display:flex;flex-direction:column;min-width:0"><span style="font-weight:600;font-size:14px">{{ c.title }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ c.sub }}</span></div>
+                <a href="#" onClick="{{ noop }}" style="font-size:13px;font-weight:700;text-decoration:none;flex:none">Открыть</a>
+              </div>
+            </sc-for>
+            <button class="btn btn-secondary" onClick="{{ logout }}" style="align-self:flex-start;margin-top:10px">Выйти из кабинета</button>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </section>
+</sc-if>
+</main>
+
+<sc-if value="{{ cancelOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="z-index:10">
+    <div class="dialog" style="width:min(480px,100%);background:var(--color-bg);gap:14px">
+      <span class="dialog-title">Отменить запись?</span>
+      <span style="font-size:15px">{{ bk.when }} · {{ bk.docShort }}</span>
+      <div style="background:var(--color-surface);padding:14px;display:flex;flex-direction:column;gap:4px;border-radius:24px">
+        <span style="font-weight:800">{{ refundTitle }}</span>
+        <span style="font-size:13px;text-wrap:pretty">{{ refundSub }}</span>
+      </div>
+      <div class="dialog-actions" style="justify-content:flex-start">
+        <button class="btn btn-primary" onClick="{{ confirmCancel }}" style="padding:12px 16px">Отменить запись</button>
+        <button class="btn btn-secondary" onClick="{{ closeCancel }}" style="padding:12px 16px">Оставить</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ docOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeCabDlg }}" style="z-index:20">
+    <div class="dialog" onClick="{{ stop }}" style="width:min(640px,100%);max-height:calc(100vh - 32px);overflow:auto;gap:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:{{ dv.typeBg }};color:{{ dv.typeFg }}">{{ dv.type }}</span>
+        <button onClick="{{ closeCabDlg }}" aria-label="Закрыть" style="width:36px;height:36px;border:0;background:var(--color-surface);cursor:pointer;font-size:18px;line-height:1;color:var(--color-text)">×</button>
+      </div>
+      <span style="font-weight:800;font-size:28px;line-height:1.1;letter-spacing:-0.02em">{{ dv.title }}</span>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+        <sc-for list="{{ dv.meta }}" as="m" hint-placeholder-count="3">
+          <div style="background:var(--color-surface);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;color:var(--color-neutral-700)">{{ m.k }}</span><span style="font-weight:700;font-size:14px">{{ m.v }}</span></div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ dv.isConcl }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ dv.sections }}" as="x" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-700)">{{ x.k }}</span><span style="font-size:15px;text-wrap:pretty">{{ x.v }}</span></div>
+          </sc-for>
+          <div style="display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:20px;background:var(--color-accent-100)">
+            <span style="font-weight:800;font-size:15px;color:var(--color-accent-700)">Рекомендации</span>
+            <sc-for list="{{ dv.recs }}" as="r" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;font-size:14px;align-items:start"><span style="width:22px;height:22px;border-radius:50%;background:var(--color-accent);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ r.n }}</span><span style="text-wrap:pretty">{{ r.text }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ dv.isLab }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:none;display:flex;flex-direction:column;border:1px solid var(--color-divider);border-radius:20px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,0.9fr) minmax(0,1fr);gap:8px;padding:10px 16px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-700);background:var(--color-surface)"><span>Показатель</span><span>Результат</span><span>Норма</span></div>
+          <sc-for list="{{ dv.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,0.9fr) minmax(0,1fr);gap:8px;padding:12px 16px;border-top:1px solid var(--color-divider);font-size:14px;align-items:baseline;background:{{ r.rowBg }}">
+              <span style="font-weight:600">{{ r.name }}</span>
+              <span style="font-weight:800;color:{{ r.valColor }}">{{ r.val }} {{ r.flag }} <span style="font-weight:400;font-size:12px;color:var(--color-neutral-700)">{{ r.unit }}</span></span>
+              <span style="font-size:13px;color:var(--color-neutral-700)">{{ r.ref }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size:13px;color:var(--color-neutral-700);text-wrap:pretty">Результаты расшифровывает лечащий врач — покажите их на приёме.</span>
+      </sc-if>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-if value="{{ dv.hasNext }}" hint-placeholder-val="{{ false }}"><button class="btn btn-primary" onClick="{{ dv.bookNext }}">{{ dv.nextText }} →</button></sc-if>
+        <button class="btn btn-secondary" onClick="{{ dv.pdf }}">Скачать PDF</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ visitOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeCabDlg }}" style="z-index:20">
+    <div class="dialog" onClick="{{ stop }}" style="width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;gap:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span class="tag" style="background:{{ vv.stBg }};color:{{ vv.stFg }};font-weight:700">{{ vv.stLabel }}</span>
+        <button onClick="{{ closeCabDlg }}" aria-label="Закрыть" style="width:36px;height:36px;border:0;background:var(--color-surface);cursor:pointer;font-size:18px;line-height:1;color:var(--color-text)">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span style="font-weight:800;font-size:28px;line-height:1.1;letter-spacing:-0.02em">{{ vv.when }}</span><span style="font-size:15px;color:var(--color-neutral-800)">{{ vv.line }}</span></div>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ vv.rows }}" as="r" hint-placeholder-count="4"><div style="display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px"><span style="color:var(--color-neutral-700)">{{ r.k }}</span><span style="font-weight:600;text-align:right">{{ r.v }}</span></div></sc-for>
+      </div>
+      <sc-if value="{{ vv.hasPrep }}" hint-placeholder-val="{{ false }}"><div style="background:var(--color-surface);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-weight:800;font-size:14px">Подготовка</span><span style="font-size:14px;text-wrap:pretty">{{ vv.prep }}</span></div></sc-if>
+      <sc-if value="{{ vv.notConfirm }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-if value="{{ vv.unpaid }}" hint-placeholder-val="{{ false }}"><button class="btn btn-primary" onClick="{{ vv.pay }}">Оплатить 400 ₽</button></sc-if>
+          <button class="btn btn-secondary" onClick="{{ vv.resched }}">Перенести</button>
+          <button class="btn btn-secondary" onClick="{{ vv.askCancel }}" style="color:var(--color-danger)">Отменить запись</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ vv.confirm }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--color-danger-100);border-radius:20px;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          <span style="font-weight:800;font-size:16px">Отменить запись?</span>
+          <span style="font-size:14px;text-wrap:pretty">{{ vv.cancelText }}</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onClick="{{ vv.doCancel }}" style="background:var(--color-danger);color:#fff">Да, отменить</button><button class="btn btn-secondary" onClick="{{ vv.back }}" style="background:#fff">Оставить</button></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:var(--color-text);color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:var(--shadow-lg);max-width:calc(100% - 32px);text-align:center">{{ toast }}</div>
+</sc-if>
+
+<footer style="border-top:1px solid var(--color-divider);padding:16px 24px;display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--color-neutral-700)">
+  <span style="margin-right:auto">ООО «ЦКЗ Лотос» · Еманжелинск, ул. Гагарина, 12А · лицензия ЛО-74-01-005206 от 29.08.2019</span>
+  <a href="#" onClick="{{ noop }}">Политика обработки данных</a>
+  <a href="#" onClick="{{ noop }}">Условия предоплаты</a>
+  <a href="#" onClick="{{ noop }}">Правила оказания платных услуг</a>
+</footer>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;payModel&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Обе&quot;,&quot;Только онлайн&quot;,&quot;Только бронь до 17:00&quot;],&quot;default&quot;:&quot;Обе&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Сценарий&quot;},&quot;start&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Запись к врачу&quot;,&quot;Личный кабинет&quot;],&quot;default&quot;:&quot;Запись к врачу&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Просмотр&quot;},&quot;frame&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Адаптивно&quot;,&quot;Мобильный 390&quot;],&quot;default&quot;:&quot;Адаптивно&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Просмотр&quot;}}">
+const DOCTORS = [
+  {id:'zh', name:'Жаворонкова Елена Викторовна', spec:'Кардиолог', exp:'Стаж 18 лет · высшая категория', services:[{id:'zh1',name:'Консультация кардиолога',dur:30,price:1800},{id:'zh2',name:'УЗИ сердца (ЭхоКГ)',dur:40,price:2600,prep:'Специальной подготовки не нужно. Возьмите ЭКГ и заключения прошлых исследований, если есть.'}]},
+  {id:'ms', name:'Морозов Сергей Андреевич', spec:'Терапевт', exp:'Стаж 11 лет', services:[{id:'ms1',name:'Консультация терапевта',dur:20,price:1300},{id:'ms2',name:'Повторная консультация',dur:20,price:900}]},
+  {id:'kl', name:'Климова Ирина Олеговна', spec:'Эндокринолог', exp:'Стаж 14 лет · к.м.н.', services:[{id:'kl1',name:'Консультация эндокринолога',dur:30,price:1900},{id:'kl2',name:'УЗИ щитовидной железы',dur:30,price:1500,prep:'Подготовка не нужна. Возьмите результаты анализов на гормоны щитовидной железы, если сдавали.'}]},
+  {id:'bt', name:'Белова Татьяна Николаевна', spec:'Терапевт', exp:'Стаж 22 года', services:[{id:'bt1',name:'Консультация терапевта',dur:20,price:1300}]},
+  {id:'gr', name:'Гришин Павел Игоревич', spec:'Невролог', exp:'Стаж 9 лет', group:{dayI:2,min:4,have:2,decide:'пт, 25 сентября, 12:00'}, services:[{id:'gr1',name:'Консультация невролога',dur:30,price:1700}]},
+  {id:'sv', name:'Соколова Вера Михайловна', spec:'Гинеколог', exp:'Стаж 16 лет', services:[{id:'sv1',name:'Консультация гинеколога',dur:30,price:1800},{id:'sv2',name:'УЗИ органов малого таза',dur:30,price:1700,prep:'Исследование проводят на 5–7 день цикла. За час до приёма выпейте 1 литр воды.'}]},
+  {id:'ld', name:'Лебедев Дмитрий Юрьевич', spec:'Уролог', exp:'Стаж 12 лет', services:[{id:'ld1',name:'Консультация уролога',dur:30,price:1700}]},
+  {id:'nk', name:'Никитина Ольга Сергеевна', spec:'Оториноларинголог', exp:'Стаж 8 лет', services:[{id:'nk1',name:'Консультация ЛОР-врача',dur:20,price:1500}]},
+  {id:'fe', name:'Фёдоров Алексей Викторович', spec:'Офтальмолог', exp:'Стаж 19 лет', services:[{id:'fe1',name:'Консультация офтальмолога',dur:30,price:1600}]},
+  {id:'tr', name:'Тарасова Марина Петровна', spec:'Кардиолог', exp:'Стаж 7 лет', services:[{id:'tr1',name:'Консультация кардиолога',dur:30,price:1600},{id:'tr2',name:'Суточное мониторирование ЭКГ',dur:20,price:2400}]},
+  {id:'ks', name:'Кузнецова Анна Дмитриевна', spec:'Невролог', exp:'Стаж 13 лет', services:[{id:'ks1',name:'Консультация невролога',dur:30,price:1700}]},
+  {id:'pv', name:'Павлов Игорь Николаевич', spec:'Эндокринолог', exp:'Стаж 10 лет', services:[{id:'pv1',name:'Консультация эндокринолога',dur:30,price:1800}]}
+];
+const SPECS = ['Все','Терапевт','Кардиолог','Эндокринолог','Невролог','Гинеколог','Уролог','Оториноларинголог','Офтальмолог'];
+const WD = ['вс','пн','вт','ср','чт','пт','сб'];
+const MON = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const NOW_MIN = 14*60+20; // сейчас: чт 24 сентября 2026, 14:20 по Челябинску
+const DAYS = Array.from({length:99},(_,i)=>{const d=new Date(2026,8,24+i);return {i,d,wd:WD[d.getDay()],num:d.getDate(),mon:MON[d.getMonth()],off:d.getDay()===0};});
+const hash=s=>{let h=7;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h);};
+const fmt=t=>String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+const rub=n=>n.toLocaleString('ru-RU')+' ₽';
+const dayName=i=>i===0?'сегодня':i===1?'завтра':'';
+const dayLong=i=>{const x=DAYS[i];const p=dayName(i);return (p?p+', ':'')+x.num+' '+x.mon;};
+function slotsFor(doc,svc,day){
+  if(day.off) return [];
+  const sat=day.d.getDay()===6, start=9*60, end=sat?13*60:17*60, out=[];
+  for(let t=start;t+svc.dur<=end;t+=svc.dur){
+    if(day.i===0&&t<NOW_MIN+60) continue;
+    out.push({t,taken:hash(doc.id+day.i+'-'+t)%3===0});
+  }
+  return out;
+}
+function nearest(doc){const s=doc.services[0];for(const d of DAYS){const f=slotsFor(doc,s,d).find(x=>!x.taken);if(f)return (dayName(d.i)||(d.wd+', '+d.num+' '+d.mon))+', '+fmt(f.t);}return 'нет мест';}
+const split=n=>{const p=n.split(' ');return {surname:p[0],given:p.slice(1).join(' ')};};
+const MONN=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAY0=new Date(2026,8,24);
+const idxOf=(m,d)=>Math.round((new Date(2026,m,d)-DAY0)/864e5);
+const pl=(n,a,b,c)=>{const x=n%10,y=n%100;return x===1&&y!==11?a:x>=2&&x<=4&&(y<10||y>=20)?b:c;};
+const maskPhone=v=>{let d=v.replace(/\D/g,'');if(!d)return '';if(d[0]==='8')d='7'+d.slice(1);else if(d[0]!=='7')d='7'+d;d=d.slice(0,11);const p=d.slice(1);let o='+7';if(p.length)o+=' '+p.slice(0,3);if(p.length>3)o+=' '+p.slice(3,6);if(p.length>6)o+='-'+p.slice(6,8);if(p.length>8)o+='-'+p.slice(8,10);return o;};
+const maskDob=v=>{const d=v.replace(/\D/g,'').slice(0,8);let o=d.slice(0,2);if(d.length>2)o+='.'+d.slice(2,4);if(d.length>4)o+='.'+d.slice(4);return o;};
+function parseDob(v){
+  const m=/^(\d{2})\.(\d{2})\.(\d{4})$/.exec(v||'');
+  if(!m)return {ok:false,err:'Дата неполная — формат дд.мм.гггг'};
+  const d=+m[1],mo=+m[2],y=+m[3],dt=new Date(y,mo-1,d);
+  if(mo<1||mo>12||dt.getMonth()!==mo-1||dt.getDate()!==d)return {ok:false,err:'Такой даты нет — проверьте день и месяц'};
+  if(dt>DAY0)return {ok:false,err:'Дата рождения не может быть в будущем'};
+  if(y<1900)return {ok:false,err:'Проверьте год рождения'};
+  let age=2026-y;if(mo-1>8||(mo-1===8&&d>24))age--;
+  return {ok:true,age};
+}
+const WHO=[['self','Я','Записываюсь на приём сам'],['child','Ребёнок','До 18 лет — запишет родитель или опекун'],['other','Другой взрослый','Родственник или знакомый — согласие даст сам по СМС']];
+// Личный кабинет — демо-данные
+const ME={name:'Смирнова Елена Андреевна',dob:'14.03.1988',phone:'+7 900 123-45-67'};
+const PEOPLE=[{id:'me',name:'Елена',full:'Смирнова Елена Андреевна',sub:'Вы · 38 лет',initial:'Е'},{id:'masha',name:'Маша',full:'Смирнова Мария Игоревна',sub:'Дочь · 9 лет',initial:'М',dob:'02.06.2017'}];
+const VISITS=[
+ {id:'v2',who:'masha',docId:'fe',svcId:'fe1',d:26,m:8,t:630,st:'up',paid:false,deadline:'17:00 сегодня'},
+ {id:'v1',who:'me',docId:'zh',svcId:'zh2',d:2,m:9,t:600,st:'up',paid:true},
+ {id:'v3',who:'me',docId:'tr',svcId:'tr2',d:23,m:8,t:540,st:'done',docs:['d5']},
+ {id:'v5',who:'me',lab:'Процедурный кабинет',svcName:'Анализы крови: липидный профиль, ОАК',price:1250,d:13,m:8,t:500,st:'done',docs:['d2','d3']},
+ {id:'v4',who:'me',docId:'zh',svcId:'zh1',d:12,m:8,t:660,st:'done',docs:['d1']},
+ {id:'v6',who:'masha',docId:'nk',svcId:'nk1',d:28,m:7,t:960,st:'done',docs:['d4']},
+ {id:'v7',who:'me',docId:'kl',svcId:'kl1',d:15,m:7,t:810,st:'cancelled',note:'Вы отменили 14 августа · 400 ₽ вернули на карту'},
+ {id:'v8',who:'me',docId:'ms',svcId:'ms1',d:3,m:6,t:620,st:'done',docs:['d6']}
+];
+const RDOCS=[
+ {id:'d1',type:'concl',title:'Заключение кардиолога',d:12,m:8,who:'me',author:'Жаворонкова Е. В.',isNew:true,
+  sections:[['Жалобы','Давящие боли за грудиной при подъёме по лестнице, одышка при быстрой ходьбе.'],['Давление на приёме','148/92 мм рт. ст., пульс 78'],['Заключение','Артериальная гипертензия. Нужны анализы и УЗИ сердца для уточнения.']],
+  recs:['Сдать липидный профиль и общий анализ крови','Сделать УЗИ сердца (ЭхоКГ) в течение месяца','Измерять давление утром и вечером, вести дневник','Повторный приём через 3–4 недели с результатами'],
+  next:{text:'Повторный приём до 15 октября',docId:'zh',svcId:'zh1'}},
+ {id:'d2',type:'lab',title:'Липидный профиль',d:13,m:8,who:'me',author:'Лаборатория «Лотос»',isNew:true,
+  rows:[['Холестерин общий','5,9','ммоль/л','3,0–5,2',1],['ЛПНП','3,6','ммоль/л','до 3,0',1],['ЛПВП','1,3','ммоль/л','от 1,2',0],['Триглицериды','1,4','ммоль/л','до 1,7',0]]},
+ {id:'d3',type:'lab',title:'Общий анализ крови',d:13,m:8,who:'me',author:'Лаборатория «Лотос»',
+  rows:[['Гемоглобин','132','г/л','120–140',0],['Эритроциты','4,4','×10¹²/л','3,8–5,1',0],['Лейкоциты','6,1','×10⁹/л','4,0–9,0',0],['Тромбоциты','248','×10⁹/л','180–320',0],['СОЭ','9','мм/ч','2–15',0]]},
+ {id:'d5',type:'study',title:'Суточное мониторирование ЭКГ',d:23,m:8,who:'me',author:'Тарасова М. П.',processing:'26 сентября'},
+ {id:'d4',type:'concl',title:'Заключение ЛОР-врача',d:28,m:7,who:'masha',author:'Никитина О. С.',
+  sections:[['Жалобы','Заложенность носа, храп по ночам две недели.'],['Заключение','Острый ринит.']],
+  recs:['Промывать нос солевым раствором 3 раза в день','Контрольный осмотр через 10 дней, если жалобы останутся'],next:null},
+ {id:'d6',type:'concl',title:'Заключение терапевта',d:3,m:6,who:'me',author:'Морозов С. А.',
+  sections:[['Жалобы','Повышенная утомляемость, эпизоды головной боли.'],['Давление на приёме','142/88 мм рт. ст.']],
+  recs:['Консультация кардиолога','Ограничить соль; кофе — не больше двух чашек в день'],next:null}
+];
+const TYPE={concl:{l:'Заключение',bg:'var(--color-accent-100)',fg:'var(--color-accent-700)'},lab:{l:'Анализы',bg:'var(--color-success-100)',fg:'var(--color-success)'},study:{l:'Исследование',bg:'var(--color-surface)',fg:'var(--color-neutral-800)'}};
+const PAYS=[
+ {d:24,m:8,what:'Предоплата · УЗИ сердца, 2 октября',who:'me',amt:400,how:'Карта •• 4417'},
+ {d:23,m:8,what:'Суточное мониторирование ЭКГ',who:'me',amt:2400,how:'Наличные, регистратура'},
+ {d:13,m:8,what:'Анализы крови',who:'me',amt:1250,how:'Карта •• 4417'},
+ {d:12,m:8,what:'Консультация кардиолога · остаток',who:'me',amt:1400,how:'Карта •• 4417'},
+ {d:10,m:8,what:'Предоплата · консультация кардиолога',who:'me',amt:400,how:'СБП'},
+ {d:28,m:7,what:'Консультация ЛОР-врача',who:'masha',amt:1500,how:'Наличные, регистратура'},
+ {d:14,m:7,what:'Возврат предоплаты · эндокринолог',who:'me',amt:-400,how:'На карту •• 4417'},
+ {d:13,m:7,what:'Предоплата · консультация эндокринолога',who:'me',amt:400,how:'СБП'},
+ {d:3,m:6,what:'Консультация терапевта',who:'me',amt:1300,how:'Карта •• 4417'}
+];
+const CONSENTS=[{title:'Согласие на обработку персональных данных',sub:'Подписано онлайн 24.09.2026 · ред. от 01.09.2026'},{title:'Согласие на обработку данных ребёнка · Маша',sub:'Подписано в регистратуре 28.08.2026'},{title:'Условия предоплаты',sub:'Приняты 24.09.2026'}];
+const NOTIFS=[['remind','Напоминание о приёме','СМС за сутки до визита'],['results','Готовность результатов','СМС, когда появится заключение или анализ'],['email','Чеки на почту','Копия кассового чека на email']];
+
+class Component extends DCLogic {
+  state = {step:'search',q:'',spec:'Все',docId:null,svcId:null,dayI:1,slotT:null,who:'self',f:{fio:'',dob:'',phone:'',repFio:'',phone2:''},c1:false,c2:false,pay:'online',tried:false,touched:{},code:'',codeErr:false,payStage:'code',bk:null,cancelOpen:false,resched:false,
+    calOpen:false,calM:0,stripStart:0,
+    authed:false,login:{phone:'',code:'',stage:'phone',err:''},cabTab:'overview',cabWho:'all',cabRec:'up',cabDocType:'all',cabDlg:null,cabConfirm:false,cabCancelled:{},cabMoved:{},cabPaid:{},cabRead:{},reschedFrom:null,reschedPaid:false,taxReq:false,notif:{remind:true,results:true,email:false},email:'',toast:''};
+  componentDidMount(){ if((this.props.start??'Запись к врачу')==='Личный кабинет') this.set({step:'cab',authed:true}); }
+  componentDidUpdate(pp){ if(pp.start!==this.props.start) this.set(this.props.start==='Личный кабинет'?{step:'cab',authed:true}:{step:'search'}); }
+  componentWillUnmount(){ clearTimeout(this._tt); }
+  toastMsg(m){ this.set({toast:m}); clearTimeout(this._tt); this._tt=setTimeout(()=>this.set({toast:''}),3200); }
+  set = p => this.setState(p);
+  cashDeadline(){
+    // самое раннее из: ближайшие 17:00 (не раньше чем через 1 ч), за 2 ч до приёма
+    const {dayI,slotT}=this.state; if(slotT==null) return null;
+    let dl = NOW_MIN+60<=17*60 ? {i:0,t:17*60} : {i:1,t:17*60};
+    if(DAYS[dl.i].off) dl={i:dl.i+1,t:17*60};
+    const lim={i:dayI,t:slotT-120};
+    if(lim.i<dl.i||(lim.i===dl.i&&lim.t<dl.t)) dl=lim;
+    if(dl.i===0&&dl.t<NOW_MIN+30) return null;
+    if(dl.i===0 && dl.t<8*60) return null;
+    return dl;
+  }
+  fieldErrors(){
+    const {f,who}=this.state, e={};
+    const nameErr=(v,what)=>{const t=v.trim();if(!t)return 'Укажите '+what;if(!/^[А-Яа-яЁёA-Za-z\-\s]+$/.test(t))return 'Только буквы — например, Иванова Мария Петровна';if(t.split(/\s+/).length<2)return 'Нужны и фамилия, и имя';return '';};
+    const fe=nameErr(f.fio,'фамилию и имя');if(fe)e.fio=fe;
+    if(!f.dob)e.dob='Укажите дату рождения';
+    else{const p=parseDob(f.dob);if(!p.ok)e.dob=p.err;else if(who==='child'&&p.age>=18)e.dob='Ребёнку должно быть меньше 18 лет';else if(who!=='child'&&p.age<18)e.dob='Пациенту нет 18 лет — выберите «Ребёнок»';}
+    const pd=f.phone.replace(/\D/g,'');
+    if(!pd)e.phone='Укажите телефон — пришлём код'; else if(pd.length<11)e.phone='Номер неполный: нужно 10 цифр после +7'; else if(pd[1]!=='9')e.phone='Нужен мобильный — на него придёт СМС';
+    if(who==='child'){const r=nameErr(f.repFio,'ФИО представителя');if(r)e.repFio=r;}
+    if(who==='other'){const p2=f.phone2.replace(/\D/g,'');if(p2.length<11)e.phone2='Нужен мобильный номер пациента';else if(p2===pd)e.phone2='Номер пациента совпадает с вашим';}
+    return e;
+  }
+  renderVals(){
+    const s=this.state, P=this.props;
+    const payModel=P.payModel??'Обе';
+    const mobile=(P.frame??'Адаптивно')==='Мобильный 390';
+    const doc=DOCTORS.find(d=>d.id===s.docId);
+    const svc=doc?(doc.services.find(x=>x.id===s.svcId)||doc.services[0]):null;
+    const q=s.q.trim().toLowerCase();
+    const res=DOCTORS.filter(d=>(s.spec==='Все'||d.spec===s.spec)&&(!q||d.name.toLowerCase().includes(q)||d.spec.toLowerCase().includes(q)||d.services.some(x=>x.name.toLowerCase().includes(q))));
+    const open=d=>()=>this.set({step:'doctor',docId:d.id,svcId:d.services[0].id,dayI:d.group?d.group.dayI:1,slotT:null,resched:s.resched,calOpen:false,stripStart:0});
+    const stepIdx={doctor:1,form:2,pay:3,done:4}[s.step]??0;
+    const dl=this.cashDeadline();
+    const cashAllowed=!!dl;
+    const effPay=payModel==='Только онлайн'?'online':payModel==='Только бронь до 17:00'?(cashAllowed?'cash':'online'):(s.pay==='cash'&&!cashAllowed?'online':s.pay);
+    const dlLabel=dl?(fmt(dl.t)+' '+dayLong(dl.i)):'';
+    const slots=doc&&svc?slotsFor(doc,svc,DAYS[s.dayI]):[];
+    const when=doc&&s.slotT!=null?dayLong(s.dayI)+', '+fmt(s.slotT):'—';
+    const summaryRows=doc?[{k:'Врач',v:split(doc.name).surname+' '+doc.name.split(' ').slice(1).map(x=>x[0]+'.').join(' ')},{k:'Услуга',v:svc.name},{k:'Когда',v:when},{k:'Стоимость',v:rub(svc.price)}]:[];
+    const on={}, blur={}; ['fio','dob','phone','repFio','phone2'].forEach(k=>{on[k]=e=>{let v=e.target.value;if(k==='phone'||k==='phone2')v=maskPhone(v);else if(k==='dob')v=maskDob(v);this.set({f:{...this.state.f,[k]:v}});};blur[k]=()=>this.set({touched:{...this.state.touched,[k]:true}});});
+    const fe=this.fieldErrors(), consentErr=s.tried&&(!s.c1||!s.c2);
+    const eb={},er={},ec={},ebg={}; ['fio','dob','phone','repFio','phone2'].forEach(k=>{const sh=(s.tried||s.touched[k])&&fe[k];er[k]=sh||'';ec[k]='var(--color-danger)';eb[k]=sh?'var(--color-danger)':'transparent';ebg[k]=sh?'var(--color-danger-100)':'var(--color-surface)';});
+    if(!fe.dob&&s.f.dob){const pd=parseDob(s.f.dob);er.dob='Пациенту '+pd.age+' '+pl(pd.age,'год','года','лет');ec.dob='var(--color-neutral-700)';}
+    er.consent='Отметьте оба пункта — без них записаться нельзя';
+    const nErr=Object.keys(fe).length+((!s.c1||!s.c2)?1:0), formHasErr=s.tried&&nErr>0;
+    const ss=Math.max(0,Math.min(s.stripStart,DAYS.length-10));
+    const bk=s.bk;
+    const ms=bk?(Date.now()-bk.paidAt)/60000:0;
+    const acc='var(--color-accent)', bg='var(--color-bg)', tx='var(--color-text)';
+    const chk=v=>({b:v?acc:consentErr?'var(--color-danger)':'var(--color-neutral-400)',bg:v?acc:'#fff',m:v?'✓':''});
+    const c1=chk(s.c1),c2=chk(s.c2);
+    let bkState='',bkStateSub='',bkMoney='',bkMoneySub='',stColor=tx;
+    if(bk){
+      if(bk.cancelled){bkState='Отменена';bkStateSub='Вы отменили запись '+bk.cancelledAt;stColor='var(--color-danger)';bkMoney=bk.paid?'Возврат оформлен':'Не вносилась';bkMoneySub=bk.paid?'400 ₽ вернутся на карту. Срок зачисления зависит от вашего банка. Чек возврата — в СМС.':'';}
+      else if(bk.paid){bkState='Подтверждена';bkStateSub='Ждём вас '+bk.when;bkMoney='400 ₽ получены';bkMoneySub='Чек предоплаты отправлен в СМС · засчитается в стоимость';}
+      else {bkState='Ждёт оплаты';bkStateSub='Время закреплено за вами до '+bk.deadline;stColor='var(--color-accent-700)';bkMoney='Не внесена';bkMoneySub='Наличными в регистратуре или по ссылке из СМС';}
+    }
+    const who={self:'Я',child:'Ребёнок',other:'Другой взрослый'};
+    return {
+      frameWidth:mobile?'390px':'1280px', frameBorder:mobile?'2px solid var(--color-divider)':'0',
+      h1Size:mobile?'36px':'56px', h2Size:mobile?'30px':'42px', warnSize:mobile?'26px':'40px', warnSize2:mobile?'17px':'22px', warnPad:mobile?'20px':'28px 32px',
+      navBookColor:['my','cab'].includes(s.step)?tx:acc, navCabColor:['my','cab'].includes(s.step)?acc:tx,
+      goHome:()=>this.set({step:'search',resched:false}), goMy:()=>this.set({step:'my'}), goCab:()=>this.set({step:'cab',cabDlg:null}), noop:e=>e.preventDefault(), stop:e=>e.stopPropagation(),
+      authed:s.authed, notAuthed:!s.authed,
+      showStepper:stepIdx>0,
+      steps:['Врач','Время','Данные','Оплата','Готово'].map((l,i)=>({n:String(i+1).padStart(2,'0'),label:l,labelDisplay:mobile?'none':'inline',bg:i===stepIdx?tx:i<stepIdx?'var(--color-neutral-200)':'transparent',fg:i===stepIdx?bg:i<stepIdx?tx:'var(--color-neutral-600)'})),
+      isSearch:s.step==='search', isDoctor:s.step==='doctor', isForm:s.step==='form', isPay:s.step==='pay', isDone:s.step==='done', isMy:s.step==='my',
+      q:s.q, hasQ:!!s.q, onQ:e=>this.set({q:e.target.value}), clearQ:()=>this.set({q:'',spec:'Все'}),
+      specChips:SPECS.map(x=>({label:x,bg:s.spec===x?tx:'transparent',fg:s.spec===x?bg:tx,onClick:()=>this.set({spec:x})})),
+      resultsLabel:(s.resched?'Перенос записи · ':'')+res.length+' '+(res.length===1?'врач':res.length<5&&res.length>0?'врача':'врачей'),
+      noResults:res.length===0,
+      results:res.map(d=>({...split(d.name),spec:d.spec,hasGroup:!!d.group,nearest:nearest(d),open:open(d),services:d.services.map(x=>({name:x.name,priceLabel:rub(x.price)}))})),
+      doc:doc?{...split(doc.name),spec:doc.spec,exp:doc.exp}:{},
+      svc:svc||{}, hasPrep:!!(svc&&svc.prep),
+      svcOptions:doc?doc.services.map(x=>({name:x.name,durLabel:x.dur+' минут',priceLabel:rub(x.price),dotBorder:x.id===svc.id?acc:'var(--color-divider)',dotBg:x.id===svc.id?acc:'transparent',pick:()=>this.set({svcId:x.id,slotT:null})})):[],
+      days:DAYS.slice(ss,ss+10).map(d=>{const sel=d.i===s.dayI;const grp=doc&&doc.group&&doc.group.dayI===d.i;return {wd:d.wd,num:d.num,sub:d.off?'выходной':grp?'группа':dayName(d.i)||d.mon.slice(0,3),off:d.off,op:d.off?0.4:1,bg:sel?acc:'#fff',fg:sel?'#fff':tx,bd:sel?acc:'var(--color-divider)',pick:()=>this.set({dayI:d.i,slotT:null})};}),
+      dayIsGroup:!!(doc&&doc.group&&doc.group.dayI===s.dayI), group:doc&&doc.group?doc.group:{},
+      dayTitle:dayLong(s.dayI),
+      noSlots:slots.filter(x=>!x.taken).length===0,
+      slots:slots.map(x=>{const sel=x.t===s.slotT;return {label:fmt(x.t),taken:x.taken,bd:x.taken?'var(--color-neutral-300)':sel?acc:'var(--color-divider)',bg:sel?acc:x.taken?'transparent':'var(--color-bg)',fg:sel?bg:x.taken?'var(--color-neutral-500)':tx,deco:x.taken?'line-through':'none',pick:()=>this.set({slotT:x.t})};}),
+      summaryRows, noSlot:s.slotT==null,
+      ctaDoctor:s.slotT==null?'Выберите время':'Продолжить',
+      restNote:svc?'Остаток '+rub(svc.price-400)+' — в клинике в день приёма.':'',
+      toForm:()=>this.set({step:'form',tried:false,touched:{}}), backDoctor:()=>this.set({step:'doctor'}),
+      whoOpts:WHO.map(([k,l,sub])=>{const sel=s.who===k;return {label:l,sub,bg:sel?'var(--color-accent-100)':'#fff',bd:sel?acc:'var(--color-neutral-300)',dot:sel?acc:'var(--color-neutral-400)',dotBg:sel?acc:'#fff',pick:()=>this.set({who:k})};}),
+      whoChild:s.who==='child', whoOther:s.who==='other',
+      fioLabel:s.who==='self'?'ФИО':'ФИО пациента', phoneLabel:s.who==='self'?'Телефон':'Ваш телефон — для СМС',
+      c1Subject:s.who==='child'?'моих и ребёнка':'',
+      f:s.f,on,blur,eb,er,ec,ebg,consentErr,consentBg:consentErr?'var(--color-danger-100)':'var(--color-surface)',consentBd:consentErr?'var(--color-danger)':'transparent',
+      formHasErr,formErrText:nErr===1?'Исправьте отмеченное красным':'Исправьте отмеченное красным — '+nErr+' '+pl(nErr,'пункт','пункта','пунктов'),
+      showPayChoice:payModel!=='Только онлайн',
+      payOpts:[
+        {title:'Оплатить онлайн сейчас',sub:'Картой или по СБП. Запись подтверждается сразу, чек придёт в СМС.',k:'online',dis:false},
+        {title:cashAllowed?'Забронировать, оплатить до '+dlLabel:'Бронь недоступна',sub:cashAllowed?'Наличными в регистратуре или по ссылке из СМС. Не успеете — время освободится.':'Приём слишком скоро: касса не успеет открыться. Доступна только онлайн-оплата.',k:'cash',dis:!cashAllowed||payModel==='Только онлайн'}
+      ].filter(p=>payModel!=='Только бронь до 17:00'||p.k==='cash'||!cashAllowed).map(p=>{const sel=effPay===p.k;return {...p,disabled:p.dis,op:p.dis?0.55:1,bg:sel?'var(--color-accent-100)':'#fff',bd:sel?acc:'var(--color-neutral-300)',dot:sel?acc:'var(--color-neutral-400)',dotBg:sel?acc:'#fff',pick:()=>this.set({pay:p.k})};}),
+      payNote:effPay==='online'?'Код и ссылку на оплату пришлём одним СМС.':'Время закрепим за вами до '+dlLabel+'.',
+      toggleC1:e=>{e.preventDefault();this.set({c1:!s.c1});}, toggleC2:e=>{e.preventDefault();this.set({c2:!s.c2});},
+      c1Border:c1.b,c1Bg:c1.bg,c1Mark:c1.m,c2Border:c2.b,c2Bg:c2.bg,c2Mark:c2.m,
+      submitForm:()=>{const e=this.fieldErrors();if(Object.keys(e).length||!s.c1||!s.c2)return this.set({tried:true});this.set({tried:false,touched:{},step:'pay',payStage:'code',code:'',codeErr:false,pay:effPay});},
+      payCode:s.payStage==='code', payBank:s.payStage==='bank',
+      code:s.code, onCode:e=>this.set({code:e.target.value.replace(/\D/g,'').slice(0,4),codeErr:false}),
+      codeBorder:s.codeErr?'var(--color-danger)':'transparent', codeHintColor:s.codeErr?'var(--color-danger)':'var(--color-neutral-700)',
+      codeHint:s.codeErr?'Неверный код. Для прототипа — 2604':'Для прототипа — код 2604. Отправить повторно через 0:59',
+      codeCta:effPay==='online'?'Перейти к оплате':'Забронировать',
+      backForm:()=>this.set({step:'form'}),
+      checkCode:()=>{if(s.code!=='2604')return this.set({codeErr:true});if(effPay==='online')this.set({payStage:'bank'});else this.finish(false,dlLabel);},
+      payBtn:'Оплатить 400 ₽', doPay:()=>this.finish(true,''),
+      doneKicker:bk&&bk.paid?'Запись подтверждена · № '+bk.num:'Время забронировано · № '+(bk?bk.num:''),
+      doneTitle:bk?bk.when:'', doneSub:bk?bk.docLine:'',
+      isCashPending:!!(bk&&!bk.paid&&!bk.cancelled), deadline:bk?bk.deadline:'',
+      payNowFromDone:()=>this.set({step:'pay',payStage:'bank',pay:'online'}),
+      restLabel:bk?rub(bk.rest):'',
+      doneFacts:bk?[{k:'Пациент',v:bk.patient},{k:'Услуга',v:bk.svc},{k:'Стоимость',v:rub(bk.price)},{k:'Предоплата',v:bk.paid?'400 ₽ внесено':'400 ₽ до '+bk.deadline}]:[],
+      reminderLabel:bk?bk.remind:'',
+      newBooking:()=>this.set({step:'search',q:'',spec:'Все',slotT:null,f:{fio:'',dob:'',phone:s.f.phone,repFio:'',phone2:''},c1:false,c2:false,who:'child'}),
+      noBooking:!bk, hasBooking:!!bk, bk:bk||{},
+      myDeco:bk&&bk.cancelled?'line-through':'none',
+      bkState,bkStateSub,bkMoney,bkMoneySub,stColor,
+      myRows:bk?[{k:'Пациент',v:bk.patient},{k:'Записал',v:bk.recorder},{k:'Услуга',v:bk.svc+' · '+rub(bk.price)},{k:'Адрес',v:'Еманжелинск, ул. Гагарина, 12А · регистратура на 1 этаже'}]:[],
+      canAct:!!(bk&&!bk.cancelled),
+      reschedule:()=>this.set({step:'doctor',docId:bk.docId,svcId:bk.svcId,slotT:null,resched:true}),
+      openCancel:()=>this.set({cancelOpen:true}), closeCancel:()=>this.set({cancelOpen:false}), cancelOpen:s.cancelOpen,
+      refundTitle:bk&&bk.paid?'Вернём 400 ₽ на карту':'Предоплата не вносилась',
+      refundSub:bk&&bk.paid?(ms<60?'Вы оплатили меньше часа назад — возврат полный, без вопросов. ':'')+'Деньги вернутся на ту же карту; срок зачисления зависит от банка. Чек возврата пришлём в СМС.':'Время освободится для других пациентов.',
+      confirmCancel:()=>this.set({cancelOpen:false,bk:{...bk,cancelled:true,cancelledAt:'24 сентября в 14:31'}}),
+      ...this.calVals(s,doc,svc,ss), ...this.cabVals(s,mobile)
+    };
+  }
+  calVals(s,doc,svc,ss){
+    const acc='var(--color-accent)', mm=8+s.calM, off0=(new Date(2026,mm,1).getDay()+6)%7, dim=new Date(2026,mm+1,0).getDate(), cells=[];
+    for(let k=0;k<off0;k++)cells.push({label:'',dis:true,vis:'hidden',bg:'transparent',fg:'transparent',bd:'0',cur:'default',fw:400,dot:'transparent',deco:'none',title:'',pick:()=>{}});
+    for(let d=1;d<=dim;d++){
+      const i=idxOf(mm,d), day=DAYS[i];
+      if(!day){cells.push({label:String(d),dis:true,vis:'visible',bg:'transparent',fg:'var(--color-neutral-400)',bd:'1.5px solid transparent',cur:'default',fw:400,dot:'transparent',deco:'none',title:'Прошедшая дата',pick:()=>{}});continue;}
+      const grp=!!(doc&&doc.group&&doc.group.dayI===i), free=doc&&svc&&!day.off?slotsFor(doc,svc,day).filter(x=>!x.taken).length:0, sel=i===s.dayI, can=!day.off&&free>0;
+      cells.push({label:String(d),dis:!can,vis:'visible',bg:sel?acc:can?'var(--color-surface)':'transparent',fg:sel?'#fff':can?'var(--color-text)':'var(--color-neutral-400)',bd:i===0&&!sel?'1.5px solid var(--color-accent-300)':'1.5px solid transparent',cur:can?'pointer':'default',fw:can?700:400,dot:sel?'#fff':grp?'var(--color-success)':can?'var(--color-accent-2)':'transparent',deco:day.off?'line-through':'none',title:day.off?'Выходной':can?free+' '+pl(free,'свободное окно','свободных окна','свободных окон'):'Мест нет',pick:()=>{if(can)this.set({dayI:i,slotT:null,calOpen:false,stripStart:Math.max(0,Math.min(i-2,DAYS.length-10))});}});
+    }
+    const last=DAYS.length-10;
+    return {calOpen:s.calOpen,calClosed:!s.calOpen,
+      toggleCal:()=>this.set({calOpen:!s.calOpen,calM:Math.max(0,DAYS[s.dayI].d.getMonth()-8)}),
+      calBtnLabel:s.calOpen?'Скрыть календарь':'Весь календарь',calBtnBg:s.calOpen?'var(--color-text)':'var(--color-accent-100)',calBtnFg:s.calOpen?'#fff':acc,
+      calTitle:MONN[mm]+' 2026',calCells:cells,
+      calPrev:()=>this.set({calM:Math.max(0,s.calM-1)}),calNext:()=>this.set({calM:Math.min(3,s.calM+1)}),calPrevDis:s.calM===0,calNextDis:s.calM===3,calPrevOp:s.calM===0?0.35:1,calNextOp:s.calM===3?0.35:1,
+      stripPrev:()=>this.set({stripStart:Math.max(0,ss-7)}),stripNext:()=>this.set({stripStart:Math.min(last,ss+7)}),stripPrevDis:ss===0,stripNextDis:ss>=last,stripPrevOp:ss===0?0.35:1,stripNextOp:ss>=last?0.35:1};
+  }
+  prefill(whoId){
+    if(whoId==='me')return {who:'self',f:{fio:ME.name,dob:ME.dob,phone:ME.phone,repFio:'',phone2:''}};
+    if(whoId==='masha')return {who:'child',f:{fio:'Смирнова Мария Игоревна',dob:'02.06.2017',phone:ME.phone,repFio:ME.name,phone2:''}};
+    return {};
+  }
+  openDoctor(docId,svcId,o){
+    o=o||{};const d=DOCTORS.find(x=>x.id===docId);
+    this.set({...this.prefill(o.who),step:'doctor',docId,svcId:svcId||d.services[0].id,dayI:d.group?d.group.dayI:1,slotT:null,resched:!!o.resched,reschedFrom:o.from||null,reschedPaid:!!o.paid,cabDlg:null,cabConfirm:false,calOpen:false,stripStart:0,c1:false,c2:false,tried:false,touched:{}});
+  }
+  bookFor(whoId){ this.set({...this.prefill(whoId),step:'search',q:'',spec:'Все',slotT:null,c1:false,c2:false,tried:false,touched:{}}); }
+  payVisit(id){
+    if(id==='bk')this.set({bk:{...this.state.bk,paid:true}}); else this.set({cabPaid:{...this.state.cabPaid,[id]:true}});
+    this.toastMsg('Оплачено 400 ₽ · чек отправлен в СМС');
+  }
+  cabVals(s,mobile){
+    const acc='var(--color-accent)',tx='var(--color-text)',sf='var(--color-surface)';
+    const who=s.cabWho, inWho=x=>who==='all'||x.who===who;
+    const person=id=>PEOPLE.find(p=>p.id===id)||{name:'Пациент',full:'—',initial:'?'};
+    const docShort=id=>{const p=DOCTORS.find(x=>x.id===id).name.split(' ');return p[0]+' '+p[1][0]+'. '+p[2][0]+'.';};
+    const svcOf=v=>v.svcName?{name:v.svcName,price:v.price}:DOCTORS.find(x=>x.id===v.docId).services.find(x=>x.id===v.svcId);
+    const wdOf=(d,m)=>WD[new Date(2026,m,d).getDay()];
+    const dl=(d,m)=>d+' '+MON[m];
+    const b=s.bk;
+    let vs=VISITS.map(v=>{const c=v.st==='up'&&s.cabCancelled[v.id],mv=v.st==='up'&&s.cabMoved[v.id],paid=v.paid||!!s.cabPaid[v.id];return {...v,st:c||mv?'cancelled':v.st,moved:!!mv,paid,note:mv?'Перенесена — предоплата перешла на новую запись':c?(paid?'Вы отменили сегодня · 400 ₽ вернутся на карту':'Вы отменили сегодня'):v.note};});
+    if(b){const D=DAYS[b.dayI];vs=[{id:'bk',who:b.whoId,docId:b.docId,svcId:b.svcId,d:D.num,m:D.d.getMonth(),t:b.t,st:b.cancelled?'cancelled':'up',paid:b.paid,deadline:b.deadline,isBk:true,patient:b.patient,note:b.cancelled?'Вы отменили сегодня':''},...vs];}
+    const whoName=v=>v.isBk&&!PEOPLE.some(p=>p.id===v.who)?(v.patient.split(' ')[1]||v.patient):person(v.who).name;
+    const ord=(x,y)=>(x.m-y.m)||(x.d-y.d)||(x.t-y.t);
+    const up=vs.filter(v=>v.st==='up'&&inWho(v)).sort(ord), past=vs.filter(v=>v.st==='done'&&inWho(v)), canc=vs.filter(v=>v.st==='cancelled'&&inWho(v));
+    const openVisit=v=>()=>v.isBk?this.set({step:'my'}):this.set({cabDlg:{kind:'visit',id:v.id},cabConfirm:false});
+    const openDoc=id=>()=>this.set({cabDlg:{kind:'doc',id},cabRead:{...this.state.cabRead,[id]:true}});
+    const stOf=v=>v.st==='up'?(v.paid?{l:'Подтверждена',bg:'var(--color-success-100)',fg:'var(--color-success)'}:{l:'Ждёт оплаты до '+v.deadline,bg:'var(--color-danger-100)',fg:'var(--color-danger)'}):v.st==='done'?{l:'Приём состоялся',bg:sf,fg:'var(--color-neutral-800)'}:{l:v.moved?'Перенесена':'Отменена',bg:sf,fg:'var(--color-neutral-700)'};
+    const vRow=v=>{const sv=svcOf(v),st=stOf(v),A=[];
+      if(v.st==='up'){A.push({label:'Подробнее',run:openVisit(v),p:v.paid});if(!v.paid)A.push({label:'Оплатить 400 ₽',run:()=>this.payVisit(v.id),p:1});}
+      if(v.docs)A.push({label:v.docs.length>1?'Документы · '+v.docs.length:'Документ',run:v.docs.length>1?()=>this.set({cabTab:'docs',cabDocType:'all'}):openDoc(v.docs[0]),p:1});
+      if(v.st!=='up'&&v.docId)A.push({label:'Записаться снова',run:()=>this.openDoctor(v.docId,v.svcId,{who:v.who})});
+      return {dnum:v.d,dmon:MON[v.m].slice(0,3)+(v.st==='up'?' · '+wdOf(v.d,v.m):''),svc:sv.name,line:(v.lab||docShort(v.docId))+' · '+fmt(v.t),whoName:whoName(v),stLabel:st.l,stBg:st.bg,stFg:st.fg,price:rub(sv.price),hasNote:!!v.note,note:v.note||'',
+        dateBg:v.st==='up'?acc:sf,dateFg:v.st==='up'?'#fff':tx,actions:A.map(a=>({label:a.label,run:a.run,bg:a.p?acc:sf,fg:a.p?'#fff':tx}))};};
+    const docs=RDOCS.filter(inWho).map(d=>{const T=TYPE[d.type],proc=!!d.processing,bad=d.rows?d.rows.filter(r=>r[4]).length:0,isNew=!!d.isNew&&!s.cabRead[d.id];
+      return {id:d.id,type:d.type,title:d.title,typeLabel:T.l,typeBg:T.bg,typeFg:T.fg,isNew,proc,meta:dl(d.d,d.m)+' · '+d.author,whoName:person(d.who).name,
+        note:proc?'Готовится · будет '+d.processing:d.type==='lab'?(bad?bad+' '+pl(bad,'показатель','показателя','показателей')+' вне нормы':'Все показатели в норме'):(d.next?d.next.text:d.recs.length+' '+pl(d.recs.length,'рекомендация','рекомендации','рекомендаций')),
+        noteColor:proc?'var(--color-neutral-700)':bad?'var(--color-danger)':d.type==='lab'?'var(--color-success)':'var(--color-accent-700)',
+        cta:proc?'Пришлём СМС':'Открыть →',ctaColor:proc?'var(--color-neutral-600)':acc,cur:proc?'default':'pointer',open:proc?()=>{}:openDoc(d.id)};});
+    const extra=[];
+    if(s.cabCancelled.v1)extra.push({d:24,m:8,what:'Возврат предоплаты · УЗИ сердца',who:'me',amt:-400,how:'На карту •• 4417'});
+    if(b&&b.paid&&b.cancelled)extra.push({d:24,m:8,what:'Возврат предоплаты · '+b.svc,who:b.whoId,amt:-400,how:'На карту •• 4417'});
+    if(b&&b.paid&&!b.carried)extra.push({d:24,m:8,what:'Предоплата · '+b.svc,who:b.whoId,amt:400,how:'Карта •• 4417'});
+    if(s.cabPaid.v2)extra.push({d:24,m:8,what:'Предоплата · офтальмолог, 26 сентября',who:'masha',amt:400,how:'Карта •• 4417'});
+    const pays=[...extra,...PAYS].filter(inWho), total=pays.reduce((a,p)=>a+p.amt,0);
+    const nx=up[0], later=up.slice(1);
+    const next=nx?{whoName:whoName(nx),payLabel:nx.paid?'Предоплата внесена':'Оплатить до '+nx.deadline,when:dl(nx.d,nx.m)+', '+fmt(nx.t),line:svcOf(nx).name+' · '+(nx.lab||docShort(nx.docId))+' · '+wdOf(nx.d,nx.m),
+      b1Label:nx.paid?'Подробнее':'Оплатить 400 ₽',b1Run:nx.paid?openVisit(nx):()=>this.payVisit(nx.id),b2Label:nx.paid?'Перенести':'Подробнее',b2Run:nx.paid?(nx.isBk?()=>this.set({step:'doctor',docId:nx.docId,svcId:nx.svcId,slotT:null,resched:true,calOpen:false,stripStart:0}):()=>this.openDoctor(nx.docId,nx.svcId,{resched:true,who:nx.who,from:nx.id,paid:nx.paid})):openVisit(nx)}:{};
+    const recOn=(who==='all'||who==='me')&&!(b&&!b.cancelled&&b.docId==='zh'&&b.svcId==='zh1');
+    const T=s.cabTab, newN=docs.filter(d=>d.isNew).length, lg=s.login;
+    const pill=(sel)=>({bg:sel?tx:sf,fg:sel?'#fff':tx});
+    const recSets={up,past,cancelled:canc};
+    const recList=(recSets[s.cabRec]||up).map(vRow);
+    const dg=s.cabDlg; let dv={}, vv={};
+    if(dg&&dg.kind==='doc'){const d=RDOCS.find(x=>x.id===dg.id),Tt=TYPE[d.type];
+      dv={type:Tt.l,typeBg:Tt.bg,typeFg:Tt.fg,title:d.title,meta:[{k:'Дата',v:dl(d.d,d.m)+' 2026'},{k:d.type==='lab'?'Выполнено':'Врач',v:d.author},{k:'Пациент',v:person(d.who).full}],
+        isConcl:d.type==='concl',isLab:d.type==='lab',sections:(d.sections||[]).map(([k,v])=>({k,v})),recs:(d.recs||[]).map((r,i)=>({n:i+1,text:r})),
+        rows:(d.rows||[]).map(r=>({name:r[0],val:r[1],unit:r[2],ref:r[3],flag:r[4]?'↑':'',valColor:r[4]?'var(--color-danger)':tx,rowBg:r[4]?'var(--color-danger-100)':'transparent'})),
+        hasNext:!!d.next,nextText:d.next?'Записаться: '+d.next.text.toLowerCase():'',bookNext:()=>{if(d.next)this.openDoctor(d.next.docId,d.next.svcId,{who:d.who});},
+        pdf:()=>this.toastMsg('Скачали «'+d.title+'.pdf»')};}
+    if(dg&&dg.kind==='visit'){const v=vs.find(x=>x.id===dg.id);
+      if(v){const sv=svcOf(v),st=stOf(v),doc=DOCTORS.find(x=>x.id===v.docId);
+      vv={stLabel:st.l,stBg:st.bg,stFg:st.fg,when:dl(v.d,v.m)+', '+wdOf(v.d,v.m)+' · '+fmt(v.t),line:sv.name+' · '+docShort(v.docId)+', '+doc.spec.toLowerCase(),
+        rows:[{k:'Пациент',v:person(v.who).full},{k:'Стоимость',v:rub(sv.price)},{k:'Предоплата',v:v.paid?'400 ₽ внесено — засчитается':'400 ₽, оплатить до '+v.deadline},{k:'Адрес',v:'Еманжелинск, ул. Гагарина, 12А'}],
+        hasPrep:!!sv.prep,prep:sv.prep||'',unpaid:v.st==='up'&&!v.paid,confirm:!!s.cabConfirm,notConfirm:!s.cabConfirm&&v.st==='up',
+        cancelText:v.paid?'Предоплата 400 ₽ вернётся на карту. Срок зачисления зависит от банка.':'Время освободится для других пациентов.',
+        pay:()=>{this.payVisit(v.id);this.set({cabDlg:null});},resched:()=>this.openDoctor(v.docId,v.svcId,{resched:true,who:v.who,from:v.id,paid:v.paid}),askCancel:()=>this.set({cabConfirm:true}),back:()=>this.set({cabConfirm:false}),
+        doCancel:()=>{this.set({cabDlg:null,cabConfirm:false,cabCancelled:{...this.state.cabCancelled,[v.id]:true}});this.toastMsg('Запись отменена'+(v.paid?' · 400 ₽ вернутся на карту':''));}};}}
+    return {
+      isCab:s.step==='cab', cabLogin:s.step==='cab'&&!s.authed, cabIn:s.authed,
+      loginPhone:lg.phone, onLoginPhone:e=>this.set({login:{...this.state.login,phone:maskPhone(e.target.value),err:''}}),
+      loginCode:lg.code, onLoginCode:e=>this.set({login:{...this.state.login,code:e.target.value.replace(/\D/g,'').slice(0,4),err:''}}),
+      loginCodeStage:lg.stage==='code', loginPhoneBd:lg.err&&lg.stage==='phone'?'var(--color-danger)':'transparent', loginCodeBd:lg.err&&lg.stage==='code'?'var(--color-danger)':'transparent',
+      loginHint:lg.err||(lg.stage==='code'?'Отправили код на '+lg.phone+'. Для прототипа — 2604':'Код придёт в СМС в течение минуты'), loginHintColor:lg.err?'var(--color-danger)':'var(--color-neutral-700)',
+      loginCta:lg.stage==='code'?'Войти':'Получить код',
+      loginNext:()=>{const L=this.state.login;if(L.stage==='phone'){if(L.phone.replace(/\D/g,'').length<11)return this.set({login:{...L,err:'Введите номер полностью: +7 и 10 цифр'}});return this.set({login:{...L,stage:'code',err:''}});}if(L.code!=='2604')return this.set({login:{...L,err:'Неверный код. Для прототипа — 2604'}});this.set({authed:true,login:{...L,code:'',stage:'phone',err:''}});},
+      cabPeople:[{id:'all',name:'Все',sub:'Елена и Маша',initial:'ЕМ'},...PEOPLE].map(p=>{const sel=who===p.id;return {name:p.name,sub:p.sub,initial:p.initial,bd:sel?acc:'transparent',bg:sel?'var(--color-accent-100)':sf,avBg:sel?acc:'#fff',avFg:sel?'#fff':acc,pick:()=>this.set({cabWho:p.id})};}),
+      cabTabs:[['overview','Обзор',0],['visits','Записи',0],['docs','Документы',newN],['pays','Платежи',0],['profile','Профиль и семья',0]].map(([k,l,n])=>({label:l,badge:n||'',badgeDisplay:n?'inline-flex':'none',bg:T===k?'#fff':'transparent',fg:T===k?tx:'var(--color-neutral-700)',sh:T===k?'var(--shadow-sm)':'none',pick:()=>this.set({cabTab:k})})),
+      tabOverview:T==='overview',tabVisits:T==='visits',tabDocs:T==='docs',tabPays:T==='pays',tabProfile:T==='profile',
+      bigSize:mobile?'34px':'48px',
+      hasNext:!!nx,noNext:!nx,next,
+      pendingPays:later.filter(v=>!v.paid).map(v=>({deadline:v.deadline,when:dl(v.d,v.m)+', '+fmt(v.t),line:svcOf(v).name+' · '+whoName(v),pay:()=>this.payVisit(v.id)})),
+      hasLater:later.some(v=>v.paid),later:later.filter(v=>v.paid).map(v=>({when:dl(v.d,v.m)+', '+wdOf(v.d,v.m)+' · '+fmt(v.t),line:svcOf(v).name+' · '+whoName(v),open:openVisit(v)})),
+      processing:RDOCS.filter(d=>d.processing&&inWho(d)).map(d=>({title:d.title,when:d.processing})),
+      newDocs:docs.filter(d=>d.isNew),noNewDocs:newN===0,toDocs:()=>this.set({cabTab:'docs',cabDocType:'all'}),
+      hasRec:recOn,rec:{text:'Повторный приём у кардиолога до 15 октября',who:'Жаворонкова Е. В. · из заключения от 12 сентября',book:()=>this.openDoctor('zh','zh1',{who:'me'})},
+      recTabs:[['up','Предстоящие',up.length],['past','Прошедшие',past.length],['cancelled','Отменённые',canc.length]].map(([k,l,n])=>({label:l,n,...pill(s.cabRec===k),pick:()=>this.set({cabRec:k})})),
+      recList,recEmpty:recList.length===0,recEmptyText:s.cabRec==='up'?'Предстоящих записей нет.':s.cabRec==='past'?'Прошедших приёмов пока нет.':'Отменённых записей нет.',
+      recCols:mobile?'68px minmax(0,1fr)':'68px minmax(0,1fr) auto',recActCol:mobile?'1 / -1':'auto',recAlign:mobile?'flex-start':'flex-end',
+      docTabs:[['all','Все'],['concl','Заключения'],['lab','Анализы'],['study','Исследования']].map(([k,l])=>({label:l,n:docs.filter(d=>k==='all'||d.type===k).length,...pill(s.cabDocType===k),pick:()=>this.set({cabDocType:k})})),
+      docList:docs.filter(d=>s.cabDocType==='all'||d.type===s.cabDocType),
+      payTotal:rub(total),payTotalSub:who==='all'?'За вас и Машу · с учётом возвратов':'С учётом возвратов',
+      taxReq:s.taxReq,taxNotReq:!s.taxReq,reqTax:()=>this.set({taxReq:true}),
+      payList:pays.map(p=>{const ref=p.amt<0;return {date:dl(p.d,p.m),what:p.what,sub:(mobile?dl(p.d,p.m)+' · ':'')+person(p.who).name+' · '+p.how,amount:(ref?'+ ':'')+rub(Math.abs(p.amt)),amtColor:ref?'var(--color-success)':tx};}),
+      payCols:mobile?'minmax(0,1fr) auto 32px':'96px minmax(0,1fr) auto 40px',payDateDisp:mobile?'none':'block',
+      profRows:[{k:'ФИО',v:ME.name},{k:'Дата рождения',v:ME.dob},{k:'Телефон',v:lg.phone||ME.phone}],
+      email:s.email,onEmail:e=>this.set({email:e.target.value}),
+      family:PEOPLE.map(p=>({full:p.full,sub:p.id==='me'?'Вы · '+ME.dob:p.sub+' · '+p.dob,initial:p.initial,avBg:p.id==='me'?acc:'#fff',avFg:p.id==='me'?'#fff':acc,book:()=>this.bookFor(p.id)})),
+      addChild:()=>this.toastMsg('Заявка отправлена — подтвердим в регистратуре по свидетельству о рождении'),
+      notifs:NOTIFS.map(([k,l,sub])=>{const on=!!s.notif[k];return {label:l,sub,on,track:on?acc:'var(--color-neutral-300)',justify:on?'flex-end':'flex-start',toggle:()=>this.set({notif:{...this.state.notif,[k]:!on}})};}),
+      consents:CONSENTS, logout:()=>this.set({authed:false,cabTab:'overview',step:'cab'}),
+      docOpen:!!(dg&&dg.kind==='doc'),dv,visitOpen:!!(dg&&dg.kind==='visit'&&vv.when),vv,closeCabDlg:()=>this.set({cabDlg:null,cabConfirm:false}),
+      hasToast:!!s.toast,toast:s.toast
+    };
+  }
+  finish(paid,dlLabel){
+    const s=this.state, doc=DOCTORS.find(d=>d.id===s.docId), svc=doc.services.find(x=>x.id===s.svcId)||doc.services[0];
+    const p=split(doc.name);
+    const remindI=Math.max(0,s.dayI-1);
+    const prev=s.bk;
+    const wasPaid=paid||(s.resched&&((prev&&prev.paid&&!prev.cancelled)||s.reschedPaid));
+    const carried=!paid&&wasPaid;
+    const recorder=s.who==='self'?s.f.fio:s.who==='child'?s.f.repFio+' (представитель)':s.f.phone;
+    this.set({step:'done',resched:false,authed:true,login:{...s.login,phone:s.login.phone||s.f.phone},cabMoved:s.reschedFrom?{...s.cabMoved,[s.reschedFrom]:true}:s.cabMoved,reschedFrom:null,reschedPaid:false,bk:{dayI:s.dayI,t:s.slotT,whoId:s.who==='self'?'me':s.who,carried,num:prev&&!prev.paid&&!prev.cancelled&&!s.resched?prev.num:String(10400+hash(s.f.fio+s.slotT)%500),docId:doc.id,svcId:svc.id,when:dayLong(s.dayI)+', '+fmt(s.slotT),docLine:svc.name+' · '+p.surname+' '+p.given+', '+doc.spec.toLowerCase(),docShort:p.surname,patient:s.f.fio||'—',recorder,svc:svc.name,price:svc.price,rest:svc.price-400,paid:wasPaid,paidAt:Date.now(),deadline:dlLabel||(prev&&prev.deadline)||'',remind:s.dayI<=1?'сегодня вечером':dayLong(remindI)+' около 12:00',cancelled:false}});
+  }
+}
+</script>
+</body>
+</html>
