@@ -7,6 +7,7 @@ import { cancelOutcome, canTransfer, type CancelOutcome } from "@/domain/cancel"
 import { moneyState, type LedgerRow, type MoneyState } from "@/domain/money";
 import { loadSettings } from "@/lib/usecases/settings";
 import { maskPhone } from "@/lib/forms/booking-v2";
+import { advanceSource } from "@/lib/usecases/cancel";
 
 export type BookingView = {
   id: number; token: string; status: BookingStatus; statusLabel: string; priceKopecks: number;
@@ -18,6 +19,8 @@ export type BookingView = {
   doctor: { title: string; specialty: string | null };
   startsAt: Date; endsAt: Date; holdUntil: Date | null; paidAt: Date | null;
   money: MoneyState; prepayKopecks: number; refundPending: boolean;
+  /** Как вернётся аванс при отмене: на карту, наличными или переводом. */
+  refundHow: "card" | "cash" | "bank";
   /** После переноса — токен новой записи, иначе null. */
   transferredToToken: string | null;
   canPay: boolean; canCancel: boolean; canTransfer: boolean; cancelPreview: CancelOutcome;
@@ -61,6 +64,7 @@ export async function getBookingView(sql: Db, clock: Clock, token: string): Prom
   const [next] = b.status === "transferred"
     ? await sql<{ token: string }[]>`select token from bookings where transferred_from_id = ${b.id} order by id desc limit 1`
     : [];
+  const src = await advanceSource(sql, b.id);
   const contactPhone = b.bookerPhone ?? b.patientPhone;
   const recorder = b.bookerRelation === "child" ? `${b.bookerName ?? ""} (представитель)`
     : b.bookerRelation === "relative" ? maskPhone(contactPhone) : b.fullName;
@@ -74,6 +78,7 @@ export async function getBookingView(sql: Db, clock: Clock, token: string): Prom
     doctor: { title: b.doctorTitle, specialty: b.specialty },
     startsAt: b.startsAt, endsAt: b.endsAt, holdUntil: b.holdUntil, paidAt: b.paidAt,
     money: moneyState(ledger), prepayKopecks: b.service.prepayKopecks, refundPending: (refund?.n ?? 0) > 0,
+    refundHow: src.paymentId || !src.channel ? "card" : src.channel === "cash" ? "cash" : "bank",
     transferredToToken: next?.token ?? null,
     canPay: (b.status === "held" && b.holdUntil != null && b.holdUntil > now)
       || ((b.status === "pending" || b.status === "claimed") && b.payDeadline != null && b.payDeadline > now),

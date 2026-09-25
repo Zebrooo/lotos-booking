@@ -26,6 +26,7 @@ describe("тексты СМС", () => {
     expect(renderSms("booking_cancelled_refund", base)).toBe("Лотос: запись на завтра, 25 сентября в 10:30 отменена. Предоплата 400 ₽ вернётся на карту.");
     expect(renderSms("booking_cancelled_refund", { ...base, refundReason: "by_clinic" })).toBe(
       "Лотос: клиника отменила запись на завтра, 25 сентября в 10:30. Предоплата 400 ₽ вернётся на карту. Вопросы: +7 900 023-05-50");
+    expect(renderSms("booking_cancelled_refund", { ...base, refundMethod: "cash" })).toBe("Лотос: запись на завтра, 25 сентября в 10:30 отменена. Предоплату 400 ₽ вернём наличными в регистратуре.");
     expect(renderSms("booking_cancelled_unpaid", base)).toBe("Лотос: запись на завтра, 25 сентября в 10:30 отменена.");
     expect(renderSms("booking_cancelled_retained", base)).toBe(
       "Лотос: запись на завтра, 25 сентября в 10:30 отменена. Предоплата 400 ₽ удерживается в счёт фактически понесённых расходов клиники. Вопросы: +7 900 023-05-50");

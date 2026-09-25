@@ -48,7 +48,7 @@ export type Outbox = { notifier: Notifier; sms: SmsSender };
 export async function sendQueuedNotifications(sql: Sql, out: Outbox, mail: MailSettings, clock: Clock, limit = 20): Promise<number> {
   const settings = await loadSettings(sql);
   const rows = await sql<{
-    id: number; channel: "sms" | "email"; recipient: string; template: string; payload: { reason?: string }; attempts: number;
+    id: number; channel: "sms" | "email"; recipient: string; template: string; payload: { reason?: string; method?: string }; attempts: number;
     token: string | null; status: string | null; service: { title: string; prepayKopecks: number } | null; startsAt: Date | null;
     holdUntil: Date | null; payDeadline: Date | null; doctorTitle: string | null; doctorKind: string | null; prepNote: string | null;
   }[]>`
@@ -75,6 +75,7 @@ export async function sendQueuedNotifications(sql: Sql, out: Outbox, mail: MailS
         serviceTitle: n.service.title, doctorShort: n.doctorKind === "doctor" ? shortName(n.doctorTitle ?? "") : n.doctorTitle ?? "",
         startsAt: n.startsAt, prepayKopecks: n.service.prepayKopecks, arriveEarlyMinutes: settings.arriveEarlyMinutes,
         status: n.status ?? "", payDeadline: n.status === "held" ? n.holdUntil : n.payDeadline, refundReason,
+        refundMethod: n.payload.method === "cash" || n.payload.method === "bank" ? n.payload.method : "provider",
       });
       res = await out.sms.send(n.recipient, text);
     } else if (isEmailTemplate(n.template)) {
@@ -97,8 +98,9 @@ export async function sendQueuedNotifications(sql: Sql, out: Outbox, mail: MailS
 }
 
 export async function retryRefunds(sql: Sql, payment: PaymentProvider, limit = 10): Promise<number> {
+  // Только возвраты через провайдера: наличные и переводы выдаёт регистратура.
   const rows = await sql<{ id: number }[]>`select id from refunds
-    where status in ('pending', 'failed') and attempts < ${MAX_ATTEMPTS} order by id limit ${limit}`;
+    where status in ('pending', 'failed') and method = 'provider' and attempts < ${MAX_ATTEMPTS} order by id limit ${limit}`;
   for (const r of rows) await executeRefund(sql, payment, r.id);
   return rows.length;
 }

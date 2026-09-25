@@ -3,7 +3,7 @@
 import { localDay } from "@/domain/time";
 import { rub, dateNum, hhmmOf, wdShort, monShort, relName, plural, accusativeName } from "@/lib/format";
 import { maskPhone } from "@/lib/forms/booking-v2";
-import type { CabinetData, CabVisit, CabDoc } from "./data";
+import { REFUND_HOW, type CabinetData, type CabVisit, type CabDoc } from "./data";
 
 export type VisitVM = {
   id: number; token: string; who: number; kind: CabVisit["kind"]; dnum: string; dmon: string; svc: string; line: string;
@@ -70,7 +70,9 @@ export function cabinetViewModel(d: CabinetData, now: Date, clinic: { address: s
           { k: "Предоплата", v: v.paid ? `${rub(v.prepayKopecks)} внесено — засчитается` : `${rub(v.prepayKopecks)}, оплатить до ${deadline}` },
           { k: "Адрес", v: clinic.address }],
         prep: v.prepNote,
-        cancelText: v.paid ? `Предоплата ${rub(v.prepayKopecks)} вернётся на карту. Срок зачисления зависит от банка.` : "Время освободится для других пациентов.",
+        cancelText: !v.paid ? "Время освободится для других пациентов."
+          : v.refundHow === "card" ? `Предоплата ${rub(v.prepayKopecks)} вернётся на карту. Срок зачисления зависит от банка.`
+          : `Предоплата ${rub(v.prepayKopecks)} вернётся ${REFUND_HOW[v.refundHow]} — регистратура свяжется с вами.`,
       },
     };
   });

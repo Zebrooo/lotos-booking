@@ -4,6 +4,8 @@ import type { Sql } from "@/lib/db/client";
 import { holdSlot } from "@/lib/usecases/hold";
 import { createPayment, applyPaymentNotification, ledgerRows } from "@/lib/usecases/payment";
 import { cancelBooking, executeRefund } from "@/lib/usecases/cancel";
+import { transferBooking } from "@/lib/usecases/transfer";
+import { retryRefunds } from "@/lib/jobs/sweeps";
 import { createFakePaymentProvider } from "@/adapters/payment-fake";
 import { localTime } from "@/domain/time";
 
@@ -72,5 +74,28 @@ describe("cancelBooking", () => {
     const r = await cancelBooking(sql, at("2026-09-14T06:05:00Z"), { token: h.token, actor: "patient" });
     expect(r.outcome).toEqual({ kind: "none", reason: "not_paid" });
     await expect(cancelBooking(sql, at("2026-09-14T06:06:00Z"), { token: h.token, actor: "patient" })).rejects.toMatchObject({ code: "bad_status" });
+  });
+  it("после переноса возврат идёт по исходному платежу", async () => {
+    const h = await paidBooking();
+    const [d] = await sql<{ id: number }[]>`select resource_id as id from bookings where id = ${h.bookingId}`;
+    const moved = await transferBooking(sql, at("2026-09-14T07:00:00Z"), { token: h.token, doctorId: d!.id, startsAt: localTime("2026-09-18", 600), actor: "patient" });
+    const r = await cancelBooking(sql, at("2026-09-15T05:00:00Z"), { token: moved.newToken, actor: "patient" });
+    expect(r.refundId).not.toBeNull();
+    expect(await executeRefund(sql, payment, r.refundId!)).toEqual({ ok: true });
+    expect(await ledgerRows(sql, moved.newBookingId)).toEqual([{ kind: "transfer_in", amountKopecks: 40000 }, { kind: "refund", amountKopecks: 40000 }]);
+  });
+
+  it("аванс наличными: возврат выдаёт регистратура — фон его не трогает, СМС говорит про кассу", async () => {
+    const s = await seedClinic(sql);
+    const h = await holdSlot(sql, at("2026-09-14T06:00:00Z"), { serviceId: s.consultId, doctorId: s.doctorId, startsAt: START, patient, consentIds: s.consentIds, source: "admin" });
+    await sql`update bookings set status = 'confirmed', paid_at = now() where id = ${h.bookingId}`;
+    await sql`insert into ledger (booking_id, kind, amount_kopecks, channel, detail) values (${h.bookingId}, 'advance', 40000, 'cash', 'Наличные · касса · чек аванса')`;
+    const r = await cancelBooking(sql, at("2026-09-15T05:00:00Z"), { token: h.token, actor: "clinic", reason: "По инициативе клиники" });
+    expect(r.outcome.kind).toBe("refund");
+    const [rf] = await sql<{ method: string; paymentId: number | null; status: string }[]>`select method, payment_id, status from refunds where id = ${r.refundId}`;
+    expect(rf).toEqual({ method: "cash", paymentId: null, status: "pending" });
+    expect(await retryRefunds(sql, payment)).toBe(0);
+    const [n] = await sql<{ payload: { method: string } }[]>`select payload from notifications where template = 'booking_cancelled_refund'`;
+    expect(n!.payload.method).toBe("cash");
   });
 });

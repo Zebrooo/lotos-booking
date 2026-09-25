@@ -15,7 +15,7 @@ describe("схема", () => {
       "consents", "doctor_requests", "document_reads", "group_days", "ledger", "medical_documents", "notifications",
       "patient_accounts", "patient_sessions", "patients", "payments", "receipts", "refunds", "resources",
       "schedule_exceptions", "schedule_rules", "schema_migrations", "service_resources", "services", "settings",
-      "site_quota", "sms_codes",
+      "site_quota", "sms_codes", "staff_sessions",
     ]);
   });
 

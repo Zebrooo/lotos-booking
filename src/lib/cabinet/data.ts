@@ -9,13 +9,18 @@ import { canTransfer } from "@/domain/cancel";
 import { loadSettings } from "@/lib/usecases/settings";
 import { dateNum, plural, shortName, rub, lowerFirst } from "@/lib/format";
 import { cabinetOwner, type CabinetOwner } from "./session";
+import { advanceSource } from "@/lib/usecases/cancel";
 
+export type RefundHow = "card" | "cash" | "bank";
+export const REFUND_HOW: Record<RefundHow, string> = { card: "на карту", cash: "наличными в регистратуре", bank: "переводом" };
 export type CabPerson = { id: number; name: string; full: string; sub: string; initial: string; dob: string; isOwner: boolean };
 export type CabVisit = {
   id: number; token: string; who: number; startsAt: Date; status: BookingStatus; kind: "up" | "done" | "cancelled";
   serviceTitle: string; priceKopecks: number; prepayKopecks: number; prepNote: string | null; doctorId: number; serviceId: number;
   doctorShort: string; doctorSpec: string | null; isLab: boolean;
   paid: boolean; deadline: Date | null; docIds: number[]; note: string | null;
+  /** Как вернётся аванс при отмене: на карту, наличными в регистратуре или переводом. */
+  refundHow: RefundHow;
   canPay: boolean; canTransfer: boolean; canCancel: boolean;
 };
 export type LabRow = [string, string, string, string, 0 | 1];
@@ -85,6 +90,13 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
       exists (select 1 from document_reads x where x.document_id = d.id and x.phone = ${phone}) as read
     from medical_documents d where d.patient_id in ${sql(ids)} order by d.issued_on desc, d.id desc`;
 
+  // Путь возврата — по источнику аванса (с учётом переносов): эквайринг, касса или перевод.
+  const how = new Map<number, RefundHow>();
+  for (const b of rows) {
+    if (b.balance <= 0 && !b.refunded) continue;
+    const src = await advanceSource(sql, b.id);
+    how.set(b.id, src.paymentId ? "card" : src.channel === "cash" ? "cash" : "bank");
+  }
   const visits: CabVisit[] = rows.map(b => {
     const live = ["held", "pending", "claimed", "confirmed"].includes(b.status);
     const kind: CabVisit["kind"] = live ? "up" : ["cancelled", "transferred"].includes(b.status) ? "cancelled" : "done";
@@ -95,8 +107,8 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
       const cday = b.cancelledAt ? localDay(b.cancelledAt) : null;
       const when = cday ? (cday === today ? "сегодня" : dateNum(cday)) : "";
       note = b.cancelledBy === "clinic" ? `Клиника отменила${b.cancelReason ? `: ${b.cancelReason}` : ""}` : `Вы отменили ${when}`;
-      if (b.refunded) note += ` · ${rub(b.service.prepayKopecks)} вернули на карту`;
-      else if (paid) note += ` · ${rub(b.service.prepayKopecks)} вернутся на карту`;
+      if (b.refunded) note += ` · ${rub(b.service.prepayKopecks)} вернули ${REFUND_HOW[how.get(b.id) ?? "card"]}`;
+      else if (paid) note += ` · ${rub(b.service.prepayKopecks)} вернутся ${REFUND_HOW[how.get(b.id) ?? "card"]}`;
     }
     const deadline = b.status === "held" ? b.holdUntil : b.payDeadline;
     return {
@@ -104,7 +116,7 @@ export async function cabinetData(sql: Db, clock: Clock, phone: string): Promise
       serviceTitle: b.service.title, priceKopecks: b.service.priceKopecks, prepayKopecks: b.service.prepayKopecks, prepNote: b.prepNote,
       doctorId: b.resourceId, serviceId: b.serviceId, isLab: b.resourceKind !== "doctor",
       doctorShort: b.resourceKind === "doctor" ? shortName(b.resourceTitle) : b.resourceTitle, doctorSpec: b.specialty,
-      paid: kind === "up" ? b.status === "confirmed" : paid, deadline, docIds: docRows.filter(d => d.bookingId === b.id).map(d => d.id), note,
+      paid: kind === "up" ? b.status === "confirmed" : paid, deadline, refundHow: how.get(b.id) ?? "card", docIds: docRows.filter(d => d.bookingId === b.id).map(d => d.id), note,
       canPay: (b.status === "pending" || b.status === "claimed") && deadline != null && deadline > now || (b.status === "held" && deadline != null && deadline > now),
       canTransfer: transition(b.status, "transfer", "patient").ok && canTransfer({ now, startsAt: b.startsAt, actor: "patient", settings }),
       canCancel: transition(b.status, "cancel", "patient").ok,
