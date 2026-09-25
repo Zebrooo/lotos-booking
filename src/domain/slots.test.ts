@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { workIntervals, freeSlots, isSlotFree, type Rule, type ScheduleException, type Busy } from "./slots";
+import { workIntervals, freeSlots, isSlotFree, slotGrid, type Rule, type ScheduleException, type Busy } from "./slots";
 import { localTime } from "./time";
 
 const DOCTOR = 1, DEVICE = 2;
@@ -83,5 +83,22 @@ describe("isSlotFree", () => {
   });
   it("за горизонтом — beyond_horizon", () => {
     expect(isSlotFree({ ...base, resourceIds: [DOCTOR], durationMin: 30, startsAt: localTime("2026-10-20", 600) })).toEqual({ ok: false, reason: "beyond_horizon" });
+  });
+});
+
+describe("slotGrid — сетка дня с занятым временем, как в прототипе", () => {
+  const hm = (d: Date) => d.toISOString().slice(11, 16);
+  it("все окна по сетке; занятые помечены, прошедшее и ближайший час не показываются", () => {
+    const busy: Busy[] = [{ resourceId: DOCTOR, startsAt: localTime(DAY, 600), endsAt: localTime(DAY, 630) }];
+    const late = new Date("2026-09-15T04:30:00Z"); // 09:30 местного
+    const grid = slotGrid({ ...base, now: late, busy, resourceIds: [DOCTOR], durationMin: 30, day: DAY, settings: { ...settings, stepMin: 30 } });
+    expect(grid.slice(0, 3).map(s => [hm(s.startsAt), s.taken])).toEqual([["05:30", false], ["06:00", false], ["06:30", false]]);
+    expect(grid.find(s => hm(s.startsAt) === "05:00")).toBeUndefined();
+    const busyGrid = slotGrid({ ...base, busy, resourceIds: [DOCTOR], durationMin: 30, day: DAY, settings: { ...settings, stepMin: 30 } });
+    expect(busyGrid.filter(s => s.taken).map(s => hm(s.startsAt))).toEqual(["05:00"]);
+    expect(busyGrid).toHaveLength(16);
+  });
+  it("выходной — пусто", () => {
+    expect(slotGrid({ ...base, resourceIds: [DOCTOR], durationMin: 30, day: "2026-09-20", settings })).toEqual([]);
   });
 });
