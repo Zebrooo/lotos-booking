@@ -4,11 +4,12 @@
 import { nanoid } from "nanoid";
 import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
-import { localDay, localTime, addMinutes } from "@/domain/time";
-import { isSlotFree, type Rule, type ScheduleException, type Busy } from "@/domain/slots";
+import { localDay, addMinutes } from "@/domain/time";
+import { isSlotFree } from "@/domain/slots";
+import { loadSlotRange, type SlotContext } from "@/lib/queries/availability";
 import { holdUntil as computeHoldUntil } from "@/domain/cancel";
 import { UsecaseError, isExclusionViolation } from "./errors";
-import { loadSettings, type Settings } from "./settings";
+import { loadSettings, slotSettings } from "./settings";
 
 export type HoldInput = {
   serviceId: number; doctorId: number; startsAt: Date;
@@ -18,31 +19,9 @@ export type HoldInput = {
 };
 export type HoldResult = { bookingId: number; token: string; holdUntil: Date; endsAt: Date; prepayKopecks: number };
 
-export type ServiceRow = { id: number; title: string; kind: string; durationMin: number; priceKopecks: number; prepayKopecks: number; prepNote: string | null; active: boolean };
-export type SlotContext = { service: ServiceRow; resourceIds: number[]; rules: Rule[]; exceptions: ScheduleException[]; busy: Busy[] };
-
-/** Услуга, её ресурсы для выбранного врача, правила, исключения и занятость на день. */
-export async function loadSlotContext(sql: Db, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
-  const [service] = await sql<ServiceRow[]>`select id, title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note, active from services where id = ${input.serviceId}`;
-  if (!service) throw new UsecaseError("not_found", "услуга не найдена");
-  if (!service.active) throw new UsecaseError("service_inactive", "услуга не оказывается");
-  const linked = await sql<{ resourceId: number; kind: string; active: boolean }[]>`select r.id as resource_id, r.kind, r.active
-    from service_resources sr join resources r on r.id = sr.resource_id where sr.service_id = ${service.id}`;
-  const doctor = linked.find(r => r.resourceId === input.doctorId && r.kind === "doctor" && r.active);
-  if (!doctor) throw new UsecaseError("doctor_mismatch", "врач не оказывает эту услугу");
-  const resourceIds = [input.doctorId, ...linked.filter(r => r.kind !== "doctor" && r.active).map(r => r.resourceId)];
-  const rules = await sql<Rule[]>`select resource_id, weekday, from_min, to_min from schedule_rules where resource_id in ${sql(resourceIds)}`;
-  const exceptionsRaw = await sql<{ resourceId: number; day: string; kind: "off" | "extra"; fromMin: number | null; toMin: number | null }[]>`
-    select resource_id, to_char(day, 'YYYY-MM-DD') as day, kind, from_min, to_min from schedule_exceptions where resource_id in ${sql(resourceIds)} and day = ${input.day}`;
-  const dayStart = localTime(input.day, 0);
-  const dayEnd = localTime(input.day, 24 * 60);
-  const busy = await sql<Busy[]>`select resource_id, starts_at, ends_at from booking_resources
-    where active and resource_id in ${sql(resourceIds)} and starts_at < ${dayEnd} and ends_at > ${dayStart}`;
-  return { service, resourceIds, rules, exceptions: exceptionsRaw, busy };
-}
-
-export function slotSettings(s: Settings) {
-  return { stepMin: s.slotStepMin, leadMinutes: s.leadMinutes, horizonDays: s.horizonDays };
+/** Контекст окон на один день; см. loadSlotRange. */
+export function loadSlotContext(sql: Db, input: { serviceId: number; doctorId: number; day: string }): Promise<SlotContext> {
+  return loadSlotRange(sql, { serviceId: input.serviceId, doctorId: input.doctorId, fromDay: input.day, toDay: input.day });
 }
 
 export async function holdSlot(sql: Sql, clock: Clock, input: HoldInput): Promise<HoldResult> {
@@ -53,7 +32,7 @@ export async function holdSlot(sql: Sql, clock: Clock, input: HoldInput): Promis
   }
   const day = localDay(input.startsAt);
   const ctx = await loadSlotContext(sql, { serviceId: input.serviceId, doctorId: input.doctorId, day });
-  const check = isSlotFree({ ...ctx, resourceIds: ctx.resourceIds, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings) });
+  const check = isSlotFree({ ...ctx, resourceIds: ctx.resourceIds, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings, ctx.service.durationMin, localDay(now)) });
   if (!check.ok) {
     const code = ({ closed: "slot_closed", past: "slot_past", beyond_horizon: "beyond_horizon", taken: "slot_taken" } as const)[check.reason];
     throw new UsecaseError(code, "окно недоступно");
@@ -76,9 +55,9 @@ export async function holdSlot(sql: Sql, clock: Clock, input: HoldInput): Promis
         and starts_at < ${endsAt} and ends_at > ${input.startsAt} limit 1`;
       if (dup.length > 0) throw new UsecaseError("duplicate_booking", "у пациента уже есть запись на это время");
       const [b] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, hold_until, source,
-          booker_relation, booker_name, booker_phone, booker_email)
+          booker_relation, booker_name, booker_phone, booker_email, created_at)
         values (${token}, ${p!.id}, ${ctx.service.id}, ${tx.json(snapshot)}, ${input.doctorId}, ${input.startsAt}, ${endsAt}, 'held', ${holdUntil}, ${input.source ?? "site"},
-          ${input.booker?.relation ?? "self"}, ${input.booker?.name ?? null}, ${input.booker?.phone ?? null}, ${input.booker?.email ?? null}) returning id`;
+          ${input.booker?.relation ?? "self"}, ${input.booker?.name ?? null}, ${input.booker?.phone ?? null}, ${input.booker?.email ?? null}, ${now}) returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${b!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
       }

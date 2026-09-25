@@ -6,9 +6,14 @@ export function testDb(): Sql { return createDb(TEST_URL, 4); }
 export async function truncateAll(sql: Sql): Promise<void> {
   await sql`truncate audit, notifications, receipts, refunds, ledger, payments, booking_consents,
     booking_resources, bookings, consents, patients, schedule_exceptions, schedule_rules,
-    service_resources, resources, services, admins restart identity cascade`;
+    service_resources, resources, services, admins, group_days, site_quota, sms_codes,
+    patient_accounts, patient_sessions, medical_documents, document_reads, cabinet_requests,
+    doctor_requests, bank_incoming, staff_sessions restart identity cascade`;
   await sql`update settings set free_cancel_hours = 24, hold_minutes = 15, lead_minutes = 60,
-    horizon_days = 30, cooling_off_minutes = 60, slot_step_min = 15, online_booking_paused = false where id = 1`;
+    horizon_days = 30, cooling_off_minutes = 60, slot_step_min = 15, online_booking_paused = false,
+    pay_model = 'both', reserve_deadline_min = 1020, reserve_min_lead_minutes = 60,
+    reserve_before_visit_minutes = 120, desk_opens_min = 480, booking_open_until = null,
+    paused_at = null, paused_by = null, paused_reason = null, paused_comment = null where id = 1`;
 }
 
 /** Кардиолог с приёмом пн–пт 09:00–13:00 и 14:00–18:00, аппарат УЗИ, две услуги, два согласия. */

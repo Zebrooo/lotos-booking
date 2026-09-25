@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="lotos-soft.css"><style>body{margin:0;background:#eef3f9;font-family:Onest,system-ui,sans-serif}a{color:#0a4ba8}a:hover{color:#073a85}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{border-radius:999px;font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;text-decoration:none}.dv-tname{font:600 13px/1.2 Onest,system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-bottom:36px}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{border-radius:999px;font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 Onest,system-ui,sans-serif;color:rgba(0,0,0,.6)}.dv-card{border-radius:28px;max-width:100%;background:#ffffff;border:1px solid rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#0a4ba8;color:#fff}.dv-next{margin:0;font:12px/1.5 Onest,system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-h{font:800 22px/1.1 Onest,sans-serif;margin:0 0 14px;letter-spacing:-0.02em}</style></helmet>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Варианты ключевых экранов · «a» — как в прототипе</span></div>
+
+<h2 class="dv-h">Поиск врача</h2>
+<div class="dv-opts">
+  <div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Сетка карточек с ценами</div>
+    <div class="dv-card" style="width:560px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-weight:800;font-size:30px;letter-spacing:-0.03em">Запись к врачу</span>
+      <div style="border:1px solid var(--color-neutral-300);padding:12px;font-size:15px;color:var(--color-neutral-600);border-radius:14px">Жаворонкова, кардиолог…</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;background:transparent">
+        <div style="background:var(--color-bg);padding:12px;display:flex;flex-direction:column;gap:6px;border-radius:14px"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">Кардиолог</span><span style="font-weight:800;font-size:16px">Жаворонкова</span><span style="font-size:12px;border-top:1px solid var(--color-divider);padding-top:6px;display:flex;justify-content:space-between"><span>Консультация</span><b>1 800 ₽</b></span><span style="font-size:12px;display:flex;justify-content:space-between"><span>УЗИ сердца</span><b>2 600 ₽</b></span><span style="font-size:12px;color:var(--color-neutral-700)">Ближайшее: завтра, 09:30</span></div>
+        <div style="background:var(--color-bg);padding:12px;display:flex;flex-direction:column;gap:6px;border-radius:14px"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">Терапевт</span><span style="font-weight:800;font-size:16px">Морозов</span><span style="font-size:12px;border-top:1px solid var(--color-divider);padding-top:6px;display:flex;justify-content:space-between"><span>Консультация</span><b>1 300 ₽</b></span><span style="font-size:12px;display:flex;justify-content:space-between"><span>Повторная</span><b>900 ₽</b></span><span style="font-size:12px;color:var(--color-neutral-700)">Ближайшее: сегодня, 16:00</span></div>
+      </div>
+    </div></div>
+  <div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Специальности плитками → врачи с ближайшим временем</div>
+    <div class="dv-card" style="width:560px;padding:20px;display:flex;flex-direction:column;gap:14px;background:#fff">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--color-surface);border-radius:999px;padding:12px 18px;font-size:14px;color:var(--color-neutral-700)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Фамилия врача, специальность или услуга</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--color-surface);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">Терапевт</b><span style="font-size:12px;color:var(--color-neutral-700)">2 врача · от 900 ₽</span></div>
+        <div style="background:var(--color-accent);color:#fff;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 20px color-mix(in srgb,var(--color-accent) 30%,transparent)"><b style="font-size:16px">Кардиолог</b><span style="font-size:12px">2 врача · от 1 600 ₽</span></div>
+        <div style="background:var(--color-surface);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">Эндокринолог</b><span style="font-size:12px;color:var(--color-neutral-700)">2 врача · от 1 500 ₽</span></div>
+        <div style="background:var(--color-surface);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">Невролог</b><span style="font-size:12px;color:var(--color-neutral-700)">2 врача · от 1 700 ₽</span></div>
+        <div style="background:var(--color-surface);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">Гинеколог</b><span style="font-size:12px;color:var(--color-neutral-700)">1 врач · от 1 700 ₽</span></div>
+        <div style="background:var(--color-surface);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">Все врачи</b><span style="font-size:12px;color:var(--color-neutral-700)">12 врачей →</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="border:1px solid var(--color-divider);border-radius:20px;padding:12px 14px;display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 2px,var(--color-neutral-200) 2px 7px)"></div><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">Жаворонкова Е. В.</b><span style="font-size:12px;color:var(--color-neutral-700)">от 1 800 ₽</span></div><div style="display:flex;gap:4px;flex-wrap:wrap;font-size:12px;font-weight:600"><span style="background:var(--color-accent-100);color:var(--color-accent-700);padding:5px 10px;border-radius:999px">завтра 09:30</span><span style="background:var(--color-accent-100);color:var(--color-accent-700);padding:5px 10px;border-radius:999px">10:00</span><span style="background:var(--color-accent-100);color:var(--color-accent-700);padding:5px 10px;border-radius:999px">11:30</span><span style="padding:5px 10px;color:var(--color-accent)">ещё →</span></div></div></div>
+        <div style="border:1px solid var(--color-divider);border-radius:20px;padding:12px 14px;display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 2px,var(--color-neutral-200) 2px 7px)"></div><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:15px">Тарасова М. П.</b><span style="font-size:12px;color:var(--color-neutral-700)">от 1 600 ₽</span></div><div style="display:flex;gap:4px;flex-wrap:wrap;font-size:12px;font-weight:600"><span style="background:var(--color-accent-100);color:var(--color-accent-700);padding:5px 10px;border-radius:999px">сегодня 16:00</span><span style="background:var(--color-accent-100);color:var(--color-accent-700);padding:5px 10px;border-radius:999px">16:30</span><span style="padding:5px 10px;color:var(--color-accent)">ещё →</span></div></div></div>
+      </div>
+    </div></div>
+  <div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Строки со свободным временем сразу</div>
+    <div class="dv-card" style="width:560px;display:flex;flex-direction:column">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:flex;gap:8px;font-size:13px"><span style="background:var(--color-text);color:var(--color-bg);padding:4px 10px;border-radius:999px">Сегодня</span><span style="border:1px solid var(--color-divider);padding:4px 10px;border-radius:999px">Завтра</span><span style="border:1px solid var(--color-divider);padding:4px 10px;border-radius:999px">На неделе</span></div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:grid;grid-template-columns:170px 1fr;gap:12px"><div style="display:flex;flex-direction:column"><b style="font-size:15px">Жаворонкова Е. В.</b><span style="font-size:12px;color:var(--color-neutral-700)">кардиолог · от 1 800 ₽</span></div><div style="display:flex;gap:4px;flex-wrap:wrap"><span style="border:1px solid var(--color-divider);padding:5px 8px;font-weight:600;font-size:13px;border-radius:999px">15:30</span><span style="border:1px solid var(--color-divider);padding:5px 8px;font-weight:600;font-size:13px;border-radius:999px">16:00</span><span style="background:var(--color-accent);color:var(--color-bg);padding:5px 8px;font-weight:600;font-size:13px;border-radius:999px">16:30</span></div></div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:grid;grid-template-columns:170px 1fr;gap:12px"><div style="display:flex;flex-direction:column"><b style="font-size:15px">Морозов С. А.</b><span style="font-size:12px;color:var(--color-neutral-700)">терапевт · от 900 ₽</span></div><div style="display:flex;gap:4px;flex-wrap:wrap"><span style="border:1px solid var(--color-divider);padding:5px 8px;font-weight:600;font-size:13px;border-radius:999px">15:40</span><span style="border:1px solid var(--color-divider);padding:5px 8px;font-weight:600;font-size:13px;border-radius:999px">16:20</span></div></div>
+      <div style="padding:14px 20px;display:grid;grid-template-columns:170px 1fr;gap:12px"><div style="display:flex;flex-direction:column"><b style="font-size:15px">Климова И. О.</b><span style="font-size:12px;color:var(--color-neutral-700)">эндокринолог · от 1 500 ₽</span></div><span style="font-size:13px;color:var(--color-neutral-700)">Сегодня мест нет · завтра с 09:00</span></div>
+    </div></div>
+</div>
+
+<h2 class="dv-h">Выбор времени</h2>
+<div class="dv-opts">
+  <div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Лента дней + сетка времени</div>
+    <div class="dv-card" style="width:560px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--color-divider)">
+        <div style="padding:8px;border-right:1px solid var(--color-divider)"><div style="font-size:10px">ЧТ</div><b style="font-size:18px">24</b></div>
+        <div style="padding:8px;border-right:1px solid var(--color-divider);background:var(--color-text);color:var(--color-bg)"><div style="font-size:10px">ПТ</div><b style="font-size:18px">25</b></div>
+        <div style="padding:8px;border-right:1px solid var(--color-divider)"><div style="font-size:10px">СБ</div><b style="font-size:18px">26</b></div>
+        <div style="padding:8px;border-right:1px solid var(--color-divider);opacity:.4"><div style="font-size:10px">ВС</div><b style="font-size:18px">27</b></div>
+        <div style="padding:8px;border-right:1px solid var(--color-divider)"><div style="font-size:10px">ПН</div><b style="font-size:18px">28</b></div>
+        <div style="padding:8px;border-right:1px solid var(--color-divider)"><div style="font-size:10px">ВТ</div><b style="font-size:18px">29</b></div>
+        <div style="padding:8px"><div style="font-size:10px">СР</div><b style="font-size:18px">30</b></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font-weight:600;font-size:14px">
+        <span style="border:1px solid var(--color-divider);padding:8px;border-radius:999px">09:00</span><span style="border:1px solid var(--color-neutral-300);padding:8px;color:var(--color-neutral-500);text-decoration:line-through;border-radius:999px">09:30</span><span style="background:var(--color-accent);color:var(--color-bg);padding:8px;border-radius:999px">10:00</span><span style="border:1px solid var(--color-divider);padding:8px;border-radius:999px">10:30</span><span style="border:1px solid var(--color-divider);padding:8px;border-radius:999px">11:00</span><span style="border:1px solid var(--color-neutral-300);padding:8px;color:var(--color-neutral-500);text-decoration:line-through;border-radius:999px">11:30</span>
+      </div>
+    </div></div>
+  <div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Недельная матрица — всё видно сразу</div>
+    <div class="dv-card" style="width:560px;padding:20px">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--color-neutral-300);font-size:13px">
+        <div style="padding:8px 6px;border-bottom:1px solid var(--color-divider)"><b>пт 25</b></div><div style="padding:8px 6px;border-bottom:1px solid var(--color-divider)"><b>сб 26</b></div><div style="padding:8px 6px;border-bottom:1px solid var(--color-divider)"><b>пн 28</b></div><div style="padding:8px 6px;border-bottom:1px solid var(--color-divider)"><b>вт 29</b></div><div style="padding:8px 6px;border-bottom:1px solid var(--color-divider)"><b>ср 30</b></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:6px"><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">09:00</span><span style="background:var(--color-accent);color:var(--color-bg);padding:5px;border-radius:999px">10:00</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">14:30</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:6px"><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">09:30</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">11:00</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:6px"><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">10:00</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">11:30</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">15:00</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">16:00</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:6px"><span style="font-size:12px;color:var(--color-neutral-700)">мест нет</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding:6px"><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">09:00</span><span style="border:1px solid var(--color-divider);padding:5px;border-radius:999px">13:30</span></div>
+      </div>
+    </div></div>
+  <div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>«Ближайшее время» первым, календарь — по запросу</div>
+    <div class="dv-card" style="width:560px;display:flex;flex-direction:column">
+      <div style="padding:18px 20px;background:var(--color-text);color:var(--color-bg);display:flex;justify-content:space-between;align-items:center;border-radius:24px"><div style="display:flex;flex-direction:column"><span style="font-size:12px;opacity:.75">Ближайшее свободное</span><b style="font-size:28px;letter-spacing:-0.02em">Завтра, 10:00</b></div><span style="background:var(--color-accent);padding:10px 14px;font-weight:800;border-radius:14px">Записаться →</span></div>
+      <div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--color-divider);font-size:14px"><span>Пятница, 25</span><b>10:30 · 11:00 · 14:30</b></div>
+      <div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--color-divider);font-size:14px"><span>Суббота, 26</span><b>09:30 · 11:00</b></div>
+      <div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--color-divider);font-size:14px"><span>Понедельник, 28</span><b>10:00 · 11:30 · 15:00 · 16:00</b></div>
+      <div style="padding:12px 20px;font-size:13px;color:var(--color-accent-700)">Открыть календарь →</div>
+    </div></div>
+</div>
+
+<h2 class="dv-h">Подтверждение записи</h2>
+<div class="dv-opts">
+  <div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Красный блок предупреждения под заголовком</div>
+    <div class="dv-card" style="width:560px;padding:20px;display:flex;flex-direction:column;gap:14px">
+      <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">Запись подтверждена · № 10512</span>
+      <span style="font-weight:800;font-size:32px;line-height:1;letter-spacing:-0.03em">Завтра, 25 сентября, 10:00</span>
+      <div style="background:var(--color-danger);color:#fff;padding:18px;display:flex;flex-direction:column;gap:6px;border-radius:24px"><b style="font-size:22px;text-transform:uppercase;line-height:1.05">Приходите за 10 минут</b><b style="font-size:15px;text-transform:uppercase">Паспорт и деньги на оплату — 1 400 ₽</b></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;background:transparent;font-size:13px"><div style="background:var(--color-bg);padding:10px;border-radius:14px"><div style="color:var(--color-neutral-700)">Врач</div><b>Жаворонкова Е. В.</b></div><div style="background:var(--color-bg);padding:10px;border-radius:14px"><div style="color:var(--color-neutral-700)">Предоплата</div><b>400 ₽ внесено</b></div></div>
+    </div></div>
+  <div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Плакат: весь экран красный</div>
+    <div class="dv-card" style="width:560px;background:var(--color-accent);color:var(--color-bg);padding:28px;display:flex;flex-direction:column;gap:18px;border:0;border-radius:24px">
+      <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">Вы записаны · № 10512</span>
+      <span style="font-weight:800;font-size:64px;line-height:.9;letter-spacing:-0.04em">ПТ 25<br>10:00</span>
+      <div style="border-top:2px solid var(--color-bg);padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-weight:800;font-size:18px;text-transform:uppercase;line-height:1.1"><span>За 10 минут до приёма</span><span>Паспорт + 1 400 ₽</span></div>
+      <span style="font-size:13px">Жаворонкова Е. В., кардиолог · каб. 204 · предоплата 400 ₽ внесена</span>
+    </div></div>
+  <div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a>Нумерованный чек-лист «что дальше»</div>
+    <div class="dv-card" style="width:560px;display:flex;flex-direction:column">
+      <div style="padding:18px 20px;border-bottom:1px solid var(--color-divider)"><b style="font-size:24px">Завтра, 10:00 · Жаворонкова Е. В.</b></div>
+      <div style="display:grid;grid-template-columns:56px 1fr;border-bottom:1px solid var(--color-divider)"><span style="font-weight:800;font-size:28px;padding:12px 16px">1</span><div style="padding:14px 20px 14px 0"><b>Оплатите 400 ₽ до 17:00 сегодня</b><div style="font-size:13px;color:var(--color-neutral-700)">по ссылке из СМС или в регистратуре</div></div></div>
+      <div style="display:grid;grid-template-columns:56px 1fr;border-bottom:1px solid var(--color-divider);background:var(--color-accent);color:var(--color-bg)"><span style="font-weight:800;font-size:28px;padding:12px 16px">2</span><div style="padding:14px 20px 14px 0"><b style="font-size:18px;text-transform:uppercase">Придите в 09:50 — за 10 минут</b><div style="font-size:14px;font-weight:600">С паспортом и деньгами — 1 400 ₽</div></div></div>
+      <div style="display:grid;grid-template-columns:56px 1fr"><span style="font-weight:800;font-size:28px;padding:12px 16px">3</span><div style="padding:14px 20px 14px 0"><b>Подпишите документы в регистратуре</b><div style="font-size:13px;color:var(--color-neutral-700)">Напомним СМС сегодня вечером</div></div></div>
+    </div></div>
+</div>
+
+<h2 class="dv-h">CRM · расписание дня</h2>
+<div class="dv-opts">
+  <div class="dv-opt" id="4a"><div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Колонки по врачам, время сверху вниз</div>
+    <div class="dv-card" style="width:600px;display:grid;grid-template-columns:44px repeat(3,1fr);font-size:11px">
+      <div style="border-bottom:1px solid var(--color-divider)"></div>
+      <div style="padding:8px;border-bottom:1px solid var(--color-divider);border-left:1px solid var(--color-divider)"><b style="font-size:13px">Жаворонкова</b></div>
+      <div style="padding:8px;border-bottom:1px solid var(--color-divider);border-left:1px solid var(--color-divider)"><b style="font-size:13px">Морозов</b></div>
+      <div style="padding:8px;border-bottom:1px solid var(--color-divider);border-left:1px solid var(--color-divider)"><b style="font-size:13px">Климова</b></div>
+      <div style="display:flex;flex-direction:column;gap:38px;padding:4px 6px;color:var(--color-neutral-700)"><span>09:00</span><span>10:00</span><span>11:00</span></div>
+      <div style="border-left:1px solid var(--color-divider);padding:4px;display:flex;flex-direction:column;gap:4px"><div style="background:var(--color-neutral-200);padding:4px;height:40px;border-radius:14px">09:00 Кравцова О.</div><div style="border:1.5px solid var(--color-text);padding:4px;height:40px;border-radius:14px">09:40 Шевчук А.</div><div style="background:var(--color-accent-100);color:var(--color-accent-800);border:1px solid var(--color-accent-300);padding:4px;height:40px;border-radius:14px">11:00 Юсупов Р. · ждёт оплаты</div></div>
+      <div style="border-left:1px solid var(--color-divider);padding:4px;display:flex;flex-direction:column;gap:4px"><div style="background:var(--color-text);color:var(--color-bg);padding:4px;height:30px;border-radius:14px">08:40 Соловьёва</div><div style="border:1px dashed var(--color-neutral-500);padding:4px;height:30px;color:var(--color-neutral-700);border-radius:14px">квота сайта</div></div>
+      <div style="border-left:1px solid var(--color-divider);padding:4px;display:flex;flex-direction:column;gap:4px"><div style="margin-top:30px;border:1.5px solid var(--color-text);padding:4px;height:40px;border-radius:14px">09:30 Ильина Т.</div></div>
+    </div></div>
+  <div class="dv-opt" id="4b"><div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a>Горизонтальная лента: врачи — строки</div>
+    <div class="dv-card" style="width:600px;display:grid;grid-template-columns:120px 1fr;font-size:11px">
+      <div style="border-bottom:1px solid var(--color-divider)"></div>
+      <div style="display:grid;grid-template-columns:repeat(8,1fr);border-bottom:1px solid var(--color-divider);color:var(--color-neutral-700)"><span style="padding:6px">09</span><span style="padding:6px">10</span><span style="padding:6px">11</span><span style="padding:6px">12</span><span style="padding:6px">13</span><span style="padding:6px">14</span><span style="padding:6px">15</span><span style="padding:6px">16</span></div>
+      <b style="padding:12px 8px;border-bottom:1px solid var(--color-divider);font-size:12px">Жаворонкова</b>
+      <div style="position:relative;border-bottom:1px solid var(--color-divider)"><span style="position:absolute;left:0%;width:6%;top:8px;bottom:8px;border-radius:8px;background:var(--color-neutral-200)"></span><span style="position:absolute;left:8%;width:8%;top:8px;bottom:8px;border-radius:8px;background:var(--color-neutral-200)"></span><span style="position:absolute;left:25%;width:6%;top:8px;bottom:8px;border-radius:8px;background:var(--color-text)"></span><span style="position:absolute;left:63%;width:6%;top:8px;bottom:8px;border-radius:8px;border:1px dashed var(--color-neutral-600)"></span><span style="position:absolute;left:81%;width:6%;top:8px;bottom:8px;border-radius:8px;background:var(--color-accent-100);border:1px solid var(--color-accent)"></span></div>
+      <b style="padding:12px 8px;border-bottom:1px solid var(--color-divider);font-size:12px">Морозов</b>
+      <div style="position:relative;border-bottom:1px solid var(--color-divider)"><span style="position:absolute;left:12.5%;width:4%;top:8px;bottom:8px;border-radius:8px;background:var(--color-neutral-200)"></span><span style="position:absolute;left:41%;width:4%;top:8px;bottom:8px;border-radius:8px;border:1.5px solid var(--color-text)"></span><span style="position:absolute;left:75%;width:4%;top:8px;bottom:8px;border-radius:8px;background:var(--color-accent-100);border:1px solid var(--color-accent-300)"></span></div>
+      <b style="padding:12px 8px;font-size:12px">Климова</b>
+      <div style="position:relative"><span style="position:absolute;left:6%;width:6%;top:8px;bottom:8px;border-radius:8px;background:var(--color-neutral-200)"></span><span style="position:absolute;left:50%;width:6%;top:8px;bottom:8px;border-radius:8px;border:1.5px solid var(--color-text)"></span><span style="position:absolute;left:87%;width:6%;top:8px;bottom:8px;border-radius:8px;background:var(--color-accent-100);border:1px solid var(--color-accent)"></span></div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--color-divider);padding:8px;display:flex;justify-content:space-between"><span>Линия «сейчас» 14:32 — видно, кто опаздывает</span><b style="color:var(--color-accent-700)">4 ждут оплаты до 17:00</b></div>
+    </div></div>
+  <div class="dv-opt" id="4c"><div class="dv-olabel"><a class="dv-oid" href="#4c">4c</a>Стойка: «сейчас / далее» и что сделать</div>
+    <div class="dv-card" style="width:600px;display:grid;grid-template-columns:1fr 1fr">
+      <div style="padding:14px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700)">Ближайшие 30 минут</span>
+        <div style="border:1.5px solid var(--color-text);padding:10px;display:flex;justify-content:space-between;border-radius:14px"><div><b>14:30 Тимофеев Р.</b><div style="font-size:12px">Гришин · каб. 108</div></div><span style="background:var(--color-text);color:var(--color-bg);padding:6px 8px;font-size:12px;font-weight:800;align-self:center;border-radius:999px">Пришёл →</span></div>
+        <div style="border:1.5px solid var(--color-text);padding:10px;display:flex;justify-content:space-between;border-radius:14px"><div><b>15:00 Белоусова К.</b><div style="font-size:12px">Морозов · не оплачено</div></div><span style="background:var(--color-accent);color:var(--color-bg);padding:6px 8px;font-size:12px;font-weight:800;align-self:center;border-radius:999px">Принять 400 ₽</span></div>
+      </div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700)">Требуют действия</span>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span>Сверить оплаты</span><b>2</b></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span>Ждут оплаты до 17:00</span><b>4</b></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span>Неявка — оформить</span><b>1</b></div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;color:var(--color-accent-700)"><span>Запрос врача: снять приём</span><b>1</b></div>
+      </div>
+    </div></div>
+</div>
+
+<h2 class="dv-h">CRM · «врач снял приём»</h2>
+<div class="dv-opts">
+  <div class="dv-opt" id="5a"><div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a>Таблица: решение по каждой строке</div>
+    <div class="dv-card" style="width:600px;display:flex;flex-direction:column;font-size:13px">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--color-divider)"><b style="font-size:18px">Гришин П. И. · 25 сентября</b></div>
+      <div style="display:grid;grid-template-columns:1.2fr 1.3fr 1fr;gap:10px;padding:10px 16px;border-bottom:1px solid var(--color-divider);align-items:center;background:var(--color-neutral-100)"><b>09:00 Сафронова И.</b><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="padding:6px;background:var(--color-text);color:var(--color-bg);border-radius:999px">Вернуть</span><span style="padding:6px">Перенести</span></div><span>✓ позвонил</span></div>
+      <div style="display:grid;grid-template-columns:1.2fr 1.3fr 1fr;gap:10px;padding:10px 16px;border-bottom:1px solid var(--color-divider);align-items:center"><b>10:30 Дмитриев К.</b><div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)"><span style="padding:6px">Вернуть</span><span style="padding:6px;background:var(--color-text);color:var(--color-bg);border-radius:999px">Перенести</span></div><span style="color:var(--color-neutral-600)">☐ позвонил</span></div>
+      <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">Решено 1 из 4</b><span style="background:var(--color-accent);color:var(--color-bg);padding:8px 12px;opacity:.45;font-weight:800;border-radius:999px">Снять приём →</span></div>
+    </div></div>
+  <div class="dv-opt" id="5b"><div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a>По одному пациенту: карточка звонка</div>
+    <div class="dv-card" style="width:600px;display:flex;flex-direction:column">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);height:6px;gap:2px"><span style="background:var(--color-text)"></span><span style="background:var(--color-accent)"></span><span style="background:var(--color-neutral-300)"></span><span style="background:var(--color-neutral-300)"></span></div>
+      <div style="padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Пациент 2 из 4 · Гришин П. И., 25 сентября</span>
+        <b style="font-size:26px;line-height:1.05">Дмитриев Кирилл Андреевич</b>
+        <b style="font-size:22px">+7 951 604-88-12</b>
+        <div style="background:var(--color-surface);padding:12px;font-size:13px;border-radius:14px">«Здравствуйте, это МЦ „Лотос“. Врач Гришин заболел, приём 25 сентября в 10:30 не состоится. Можем перенести на понедельник или вернуть 400 ₽…»</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-weight:800;font-size:13px"><span style="background:var(--color-text);color:var(--color-bg);padding:10px;border-radius:14px">Перенести →</span><span style="border:1px solid var(--color-divider);padding:10px;font-weight:400;border-radius:14px">Не дозвонился</span></div>
+      </div>
+    </div></div>
+  <div class="dv-opt" id="5c"><div class="dv-olabel"><a class="dv-oid" href="#5c">5c</a>Три колонки: не решено → вернуть / перенести</div>
+    <div class="dv-card" style="width:600px;display:grid;grid-template-columns:repeat(3,1fr);font-size:12px">
+      <div style="padding:12px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;background:var(--color-accent-100)"><b style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-800)">Не решено · 2</b><div style="background:var(--color-bg);border:1.5px solid var(--color-text);padding:8px;border-radius:14px"><b>13:00 Хасанова Л.</b><div>не оплачено</div></div><div style="background:var(--color-bg);border:1.5px solid var(--color-text);padding:8px;border-radius:14px"><b>14:00 Воронин П.</b><div>400 ₽ · сайт</div></div></div>
+      <div style="padding:12px;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;gap:6px"><b style="font-size:11px;letter-spacing:.08em;text-transform:uppercase">Вернуть · 1</b><div style="background:var(--color-surface);padding:8px;border-radius:14px"><b>09:00 Сафронова И.</b><div>−400 ₽ · позвонил ✓</div></div></div>
+      <div style="padding:12px;display:flex;flex-direction:column;gap:6px"><b style="font-size:11px;letter-spacing:.08em;text-transform:uppercase">Перенести · 1</b><div style="background:var(--color-surface);padding:8px;border-radius:14px"><b>10:30 Дмитриев К.</b><div>→ пн 28.09, 10:00</div></div></div>
+    </div></div>
+</div>
+
+<p class="dv-next">Дальше можно: «взять <a class="dv-oid" href="#2c">2c</a> в прототип» · «<a class="dv-oid" href="#3b">3b</a> только для мобильной версии» · «добавить <a class="dv-oid" href="#4c">4c</a> как отдельную вкладку CRM»</p>
+</section>
+</x-dc>
+</body>
+</html>

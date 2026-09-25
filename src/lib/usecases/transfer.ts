@@ -1,5 +1,6 @@
-// Перенос — не отмена: старая запись закрывается, новая создаётся сразу
-// подтверждённой, предоплата переезжает без нового платежа и чека.
+// Перенос — не отмена: старая запись закрывается, новая создаётся в том же
+// состоянии. Оплаченная переезжает подтверждённой, предоплата — без нового
+// платежа и чека; неоплаченная бронь переезжает бронью с новым сроком оплаты.
 import { nanoid } from "nanoid";
 import type { Sql } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
@@ -7,11 +8,13 @@ import { localDay, addMinutes } from "@/domain/time";
 import { isSlotFree } from "@/domain/slots";
 import { transition } from "@/domain/transitions";
 import { canTransfer } from "@/domain/cancel";
+import { reserveDeadline } from "@/domain/reserve";
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
 import { UsecaseError, isExclusionViolation } from "./errors";
-import { loadSettings } from "./settings";
-import { loadSlotContext, slotSettings } from "./hold";
+import { loadSettings, slotSettings } from "./settings";
+import { loadSlotContext } from "./hold";
 import { findBooking } from "./cancel";
+import { queueSms } from "./contact";
 
 export async function transferBooking(sql: Sql, clock: Clock, input: { token?: string; bookingId?: number; actor: "patient" | "clinic"; doctorId: number; startsAt: Date }): Promise<{ newBookingId: number; newToken: string }> {
   const now = clock.now();
@@ -28,17 +31,28 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       await tx`update bookings set status = 'transferred', hold_until = null where id = ${old.id}`;
       await tx`update booking_resources set active = false where booking_id = ${old.id}`;
       const ctx = await loadSlotContext(tx, { serviceId: old.serviceId, doctorId: input.doctorId, day: localDay(input.startsAt) });
-      const check = isSlotFree({ ...ctx, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings) });
+      const check = isSlotFree({ ...ctx, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings, ctx.service.durationMin, localDay(now)) });
       if (!check.ok) {
         const code = ({ closed: "slot_closed", past: "slot_past", beyond_horizon: "beyond_horizon", taken: "slot_taken" } as const)[check.reason];
         throw new UsecaseError(code, "окно недоступно");
       }
       const endsAt = addMinutes(input.startsAt, ctx.service.durationMin);
       const token = nanoid(21);
+      const unpaid = old.status === "pending" || old.status === "claimed";
+      const deadline = unpaid
+        ? reserveDeadline({ now, startsAt: input.startsAt, settings: { deadlineMin: settings.reserveDeadlineMin, minLeadMinutes: settings.reserveMinLeadMinutes, beforeVisitMinutes: settings.reserveBeforeVisitMinutes, deskOpensMin: settings.deskOpensMin } })
+          ?? addMinutes(now, settings.holdMinutes)
+        : null;
+      // Ссылка на согласие пациента (из СМС) переезжает на новую запись вместе с самим согласием.
+      const [ct] = await tx<{ t: string | null }[]>`update bookings b set patient_consent_token = null
+        from (select patient_consent_token as t from bookings where id = ${old.id}) o where b.id = ${old.id} returning o.t`;
       const [nb] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, paid_at, transferred_from_id, source,
-          booker_relation, booker_name, booker_phone, booker_email)
-        select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, 'confirmed', paid_at, id, source,
-          booker_relation, booker_name, booker_phone, booker_email from bookings where id = ${old.id} returning id`;
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, pay_deadline, phone_verified_at, claim_note, created_at,
+          patient_consent_token, patient_consent_at, patient_consent_id, patient_consent_ip, patient_consent_ua)
+        select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, ${unpaid ? old.status : "confirmed"}, paid_at, id, source,
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, ${deadline}, phone_verified_at, claim_note, ${now},
+          ${ct?.t ?? null}, patient_consent_at, patient_consent_id, patient_consent_ip, patient_consent_ua
+        from bookings where id = ${old.id} returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${nb!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
       }
@@ -48,10 +62,10 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       if (amount > 0) {
         const out = canAppend(rows, { kind: "transfer_out", amountKopecks: amount });
         if (!out.ok) throw new Error(`журнал записи ${old.id}: ${out.reason}`);
-        await tx`insert into ledger (booking_id, kind, amount_kopecks, note) values (${old.id}, 'transfer_out', ${amount}, ${`перенос в запись ${nb!.id}`})`;
-        await tx`insert into ledger (booking_id, kind, amount_kopecks, note) values (${nb!.id}, 'transfer_in', ${amount}, ${`перенос из записи ${old.id}`})`;
+        await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${old.id}, 'transfer_out', ${amount}, ${`перенос в запись ${nb!.id}`}, 'transfer', ${`на запись № ${nb!.id}`})`;
+        await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${nb!.id}, 'transfer_in', ${amount}, ${`перенос из записи ${old.id}`}, 'transfer', ${`с записи № ${old.id}`})`;
       }
-      await tx`insert into notifications (booking_id, recipient, template, payload) values (${nb!.id}, ${old.email}, 'booking_transferred', ${tx.json({ title: old.service.title })})`;
+      await queueSms(tx, nb!.id, "booking_transferred");
       return { newBookingId: nb!.id, newToken: token };
     });
   } catch (e) {

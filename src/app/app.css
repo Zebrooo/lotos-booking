@@ -1,0 +1,58 @@
+/*
+ * Дополнения к теме дизайна: то, что в прототипе делала среда показа.
+ * — размеры, которые прототип переключал рамкой «Мобильный 390»;
+ * — состояния :hover, заданные в прототипе атрибутом style-hover;
+ * — фон страницы, как в <helmet> прототипа.
+ */
+body { margin: 0; background: #ffffff; }
+a { color: #0a4ba8; }
+a:hover { color: #073a85; }
+
+:root {
+  --h1-size: 56px;
+  --h2-size: 42px;
+  --warn-size: 40px;
+  --warn-size2: 22px;
+  --warn-pad: 28px 32px;
+  --big-size: 48px;
+}
+@media (max-width: 640px) {
+  :root {
+    --h1-size: 36px;
+    --h2-size: 30px;
+    --warn-size: 26px;
+    --warn-size2: 17px;
+    --warn-pad: 20px;
+    --big-size: 34px;
+  }
+  .step-label { display: none; }
+}
+
+.hov-neutral-100:hover { background: var(--color-neutral-100) !important; }
+.hov-accent-100:hover { background: var(--color-accent-100) !important; }
+.hov-shadow-md:hover { box-shadow: var(--shadow-md) !important; }
+.hov-bright:hover { filter: brightness(0.96); }
+
+/* Ссылки-кнопки ведут себя как <button> прототипа: браузер не наследует
+   кнопкам межбуквенный интервал страницы, и ширина должна совпасть. */
+a.btn { letter-spacing: normal; }
+
+/* Ссылки, которые в прототипе были span с onClick: вид текста, не ссылки. */
+.plain-link, .plain-link:hover { color: inherit; text-decoration: none; }
+
+@media print { .no-print { display: none !important; } }
+
+/* Личный кабинет: колонки строк записей и платежей; на телефоне — как рамка «Мобильный 390». */
+.cab-rec { grid-template-columns: 68px minmax(0, 1fr) auto; }
+.cab-rec-act { align-items: flex-end; }
+.cab-rec-act > div { justify-content: flex-end; }
+.cab-pay { grid-template-columns: 96px minmax(0, 1fr) auto 40px; }
+.only-mob { display: none; }
+@media (max-width: 640px) {
+  .cab-rec { grid-template-columns: 68px minmax(0, 1fr); }
+  .cab-rec-act { grid-column: 1 / -1; align-items: flex-start; }
+  .cab-rec-act > div { justify-content: flex-start; }
+  .cab-pay { grid-template-columns: minmax(0, 1fr) auto 32px; }
+  .cab-pay-date, .only-desk { display: none; }
+  .only-mob { display: inline; }
+}

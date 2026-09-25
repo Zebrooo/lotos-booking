@@ -58,6 +58,34 @@ function anyBusy(input: Common, startsAt: Date, endsAt: Date): boolean {
     input.busy.some(b => b.resourceId === id && overlaps(startsAt, endsAt, b.startsAt, b.endsAt)));
 }
 
+export type GridSlot = Slot & { taken: boolean };
+
+/**
+ * Сетка дня для показа пациенту: все окна рабочего времени, занятые — с
+ * отметкой taken (в дизайне v2 они зачёркнуты). Прошедшее и ближайшее
+ * время не показывается вовсе.
+ */
+export function slotGrid(input: Common & { day: IsoDay }): GridSlot[] {
+  const { resourceIds, durationMin, day, now, settings } = input;
+  if (resourceIds.length === 0 || !Number.isInteger(durationMin) || durationMin <= 0) return [];
+  if (!Number.isInteger(settings.stepMin) || settings.stepMin <= 0) return [];
+  const today = localDay(now);
+  if (day < today || day > addDays(today, settings.horizonDays)) return [];
+  const earliest = addMinutes(now, settings.leadMinutes);
+  const perResource = resourceIds.map(id => workIntervals({ resourceId: id, day, rules: input.rules, exceptions: input.exceptions }));
+  const out: GridSlot[] = [];
+  for (const it of perResource[0] ?? []) {
+    for (let t = it.fromMin; t + durationMin <= it.toMin; t += settings.stepMin) {
+      const startsAt = localTime(day, t);
+      if (startsAt < earliest) continue;
+      if (!perResource.every(iv => inside(iv, t, t + durationMin))) continue;
+      const endsAt = addMinutes(startsAt, durationMin);
+      out.push({ startsAt, endsAt, taken: anyBusy(input, startsAt, endsAt) });
+    }
+  }
+  return out;
+}
+
 export function freeSlots(input: Common & { day: IsoDay }): Slot[] {
   const { resourceIds, durationMin, day, now, settings } = input;
   if (resourceIds.length === 0 || !Number.isInteger(durationMin) || durationMin <= 0) return [];
