@@ -1,10 +1,10 @@
 // Чтение сессии кабинета в серверных компонентах: cookie → телефон → владелец.
-import { cookies } from "next/headers";
 import { app } from "@/lib/app";
-import { SESSION_COOKIE, phoneBySession, cabinetOwner, type CabinetOwner } from "./session";
+import { phoneBySession, cabinetOwner, type CabinetOwner } from "./session";
+import { readSessionCookie } from "./cookie";
 
 export async function currentPhone(): Promise<string | null> {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const token = await readSessionCookie();
   if (!token) return null;
   const { sql, adapters } = app();
   return phoneBySession(sql, adapters.clock, token);

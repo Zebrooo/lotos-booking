@@ -77,4 +77,15 @@ describe("getBookingView", () => {
     const fresh = await getBookingView(sql, at("2026-09-15T05:01:00Z"), t.newToken);
     expect(fresh).toMatchObject({ status: "confirmed", transferredToToken: null, money: "advance_held" });
   });
+
+  it("v2: номер, цена, кто записал, бронь со сроком и оплата по ссылке до срока", async () => {
+    const { h } = await held();
+    await sql`update bookings set status = 'pending', pay_mode = 'reserve', pay_deadline = '2026-09-14T12:00:00Z', hold_until = null,
+      booker_relation = 'child', booker_name = 'Иванова Анна Петровна', booker_phone = '+79001234567' where id = ${h.bookingId}`;
+    const v = await getBookingView(sql, at("2026-09-14T07:00:00Z"), h.token);
+    expect(v).toMatchObject({ id: h.bookingId, priceKopecks: 180000, status: "pending", canPay: true, relation: "child",
+      recorder: "Иванова Анна Петровна (представитель)", contactPhone: "+79001234567", consentPending: false });
+    expect(v!.payDeadline?.toISOString()).toBe("2026-09-14T12:00:00.000Z");
+    expect((await getBookingView(sql, at("2026-09-14T12:01:00Z"), h.token))!.canPay).toBe(false);
+  });
 });

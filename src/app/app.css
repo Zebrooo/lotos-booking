@@ -33,6 +33,10 @@ a:hover { color: #073a85; }
 .hov-shadow-md:hover { box-shadow: var(--shadow-md) !important; }
 .hov-bright:hover { filter: brightness(0.96); }
 
+/* Ссылки-кнопки ведут себя как <button> прототипа: браузер не наследует
+   кнопкам межбуквенный интервал страницы, и ширина должна совпасть. */
+a.btn { letter-spacing: normal; }
+
 /* Ссылки, которые в прототипе были span с onClick: вид текста, не ссылки. */
 .plain-link, .plain-link:hover { color: inherit; text-decoration: none; }
 
