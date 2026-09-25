@@ -66,3 +66,28 @@ describe("данные CRM на демо-клинике", () => {
     expect(days.map(d => [d.day, d.rows.length])).toEqual([["2026-09-24", 2], ["2026-09-25", 4]]);
   });
 });
+
+describe("подписи CRM как в прототипе", () => {
+  it("блок расписания, шторка, сверка", async () => {
+    const { bookingVM } = await import("@/lib/crm/view");
+    await seedDemoV2(sql, now, { staffPassword: "x" });
+    const day = await crmBookings(sql, clock, { from: "2026-09-24", to: "2026-09-24" });
+    const vm = (name: string) => bookingVM(day.find(b => b.patientFull === name)!, now);
+    const kr = vm("Кравцова Ольга Викторовна");
+    expect(kr).toMatchObject({ time: "09:00", short: "Кравцова О. В.", state: "Приём состоялся", money: "400 ₽".replace(" ", " "), src: "Телефон" });
+    expect(kr.block.sub).toBe("Консультация кардиолога · тел.");
+    expect(kr.drawer.ops).toEqual([
+      { t: "22.09 09:10", op: "Аванс получен", detail: "Наличные · касса · чек аванса", amount: "+400 ₽" },
+      { t: "24.09 09:00", op: "Зачёт аванса", detail: "чек при оказании услуги", amount: "0 ₽" }]);
+    expect(kr.drawer.facts).toEqual([
+      { k: "Врач", v: "Жаворонкова Е. В." }, { k: "Услуга", v: "Консультация кардиолога" }, { k: "Когда", v: "24 сентября, чт, 09:00" },
+      { k: "Записал", v: "сам пациент" }, { k: "Напоминание", v: "не отправляется (запись не с сайта)" }]);
+    const gv = vm("Гаврилова Нина Петровна");
+    expect(gv.block.sub).toBe("Оплата заявлена · до 17:00 · сайт");
+    expect(gv.drawer).toMatchObject({ state: "Оплата заявлена", stateSub: "Пациент сообщил об оплате в 13:52", money: "Аванс не получен", stColor: "var(--color-accent-700)" });
+    expect(gv.drawer.actions.map(a => a.label)).toEqual(["Сверить с поступлением", "Перенести", "Отменить запись"]);
+    expect(gv.recon).toEqual({ line: "Жаворонкова Е. В. · 24 сентября, 15:30", deadline: "до 17:00 сегодня" });
+    expect(vm("Зайцев Олег Николаевич").drawer.actions.map(a => a.label)).toEqual(["Пациент пришёл, документы подписаны", "Отметить неявку", "Перенести", "Отменить запись"]);
+    expect(vm("Юсупов Ринат Маратович").drawer.actions[0]!.label).toBe("Отметить оплату наличными");
+  });
+});

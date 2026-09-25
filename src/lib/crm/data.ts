@@ -15,7 +15,7 @@ export type CrmBooking = {
   doctorId: number; doctorShort: string; serviceId: number; service: string; prepayKopecks: number;
   patient: string; patientFull: string; isChild: boolean; dob: string; phone: string;
   status: BookingStatus; source: "site" | "phone" | "desk" | "admin"; deadline: Date | null; claimNote: string | null;
-  recorder: string | null; consentPending: boolean; money: MoneyState;
+  recorder: string | null; consentPending: boolean; money: MoneyState; refundMethod: "provider" | "cash" | "bank" | null;
   cancelledAt: Date | null; cancelledBy: "patient" | "clinic" | null; cancelReason: string | null; movedTo: { startsAt: Date; doctorShort: string } | null;
   reminder: { kind: "sent" | "queued" | "planned" | "none" | "not_site"; at: Date | null };
   ops: CrmOp[];
@@ -69,8 +69,8 @@ export async function crmBookings(sql: Db, clock: Clock, f: Filter): Promise<Crm
 
   const ledger = await sql<{ bookingId: number; kind: string; amountKopecks: number; channel: string | null; detail: string | null; note: string | null; createdAt: Date }[]>`
     select booking_id, kind, amount_kopecks, channel, detail, note, created_at from ledger where booking_id in ${sql(ids)} order by created_at, id`;
-  const refunds = await sql<{ bookingId: number; amountKopecks: number; status: string; createdAt: Date }[]>`
-    select booking_id, amount_kopecks, status, created_at from refunds where booking_id in ${sql(ids)} and status <> 'done'`;
+  const refunds = await sql<{ bookingId: number; amountKopecks: number; status: string; method: "provider" | "cash" | "bank"; createdAt: Date }[]>`
+    select booking_id, amount_kopecks, status, method, created_at from refunds where booking_id in ${sql(ids)} and status <> 'done'`;
   const moved = await sql<{ fromId: number; startsAt: Date; title: string }[]>`
     select b.transferred_from_id as from_id, b.starts_at, r.title from bookings b join resources r on r.id = b.resource_id
     where b.transferred_from_id in ${sql(ids)}`;
@@ -117,7 +117,7 @@ export async function crmBookings(sql: Db, clock: Clock, f: Filter): Promise<Crm
       dob: ru(b.birthDate), phone: fmtPhone(phone), status: b.status, source: b.source,
       deadline: b.status === "held" ? b.holdUntil : b.payDeadline, claimNote: b.claimNote,
       recorder: isChild ? b.bookerName : b.bookerRelation === "relative" ? `родственник или знакомый · ${fmtPhone(b.bookerPhone ?? "")}` : null,
-      consentPending: b.patientConsentToken != null && b.patientConsentAt == null, money,
+      consentPending: b.patientConsentToken != null && b.patientConsentAt == null, money, refundMethod: ref[0]?.method ?? null,
       cancelledAt: b.cancelledAt, cancelledBy: b.cancelledBy, cancelReason: b.cancelReason,
       movedTo: mv ? { startsAt: mv.startsAt, doctorShort: shortName(mv.title) } : null, reminder, ops,
     };

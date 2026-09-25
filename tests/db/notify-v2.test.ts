@@ -122,6 +122,12 @@ describe("напоминание накануне", () => {
     expect(await queueReminders(sql, at("2026-09-16T07:00:00Z"))).toBe(0);
   });
 
+  it("записи по телефону и на стойке напоминание не получают (как в макете CRM)", async () => {
+    const v = await paid();
+    await sql`update bookings set source = 'admin' where id = ${v.id}`;
+    expect(await queueReminders(sql, at("2026-09-16T07:00:00Z"))).toBe(0);
+  });
+
   it("запись, сделанная вечером накануне, напоминания не получает", async () => {
     const v = await verified("online", at("2026-09-16T14:00:00Z")); // ср 19:00
     const { paymentId } = await createPayment(sql, { payment: fake, clock: v.clock }, { token: v.token, returnUrl: "http://x/r" });
