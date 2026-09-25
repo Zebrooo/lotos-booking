@@ -1,6 +1,6 @@
 "use client";
 // Вход в кабинет по номеру телефона и коду из СМС — экран прототипа «Личный кабинет».
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { maskPhone } from "@/lib/forms/booking-v2";
 import { requestLoginCodeAction, loginAction } from "@/app/(site)/kabinet/actions";
 
@@ -12,6 +12,9 @@ export function CabinetLogin() {
   const [stage, setStage] = useState<"phone" | "code">("phone");
   const [err, setErr] = useState("");
   const [pending, start] = useTransition();
+  const phoneRef = useRef<HTMLInputElement>(null);
+  // Назад к номеру: код сбрасывается, поле телефона — в фокусе.
+  const changePhone = () => { setStage("phone"); setCode(""); setErr(""); requestAnimationFrame(() => phoneRef.current?.focus()); };
 
   const next = () => {
     if (pending) return;
@@ -30,7 +33,7 @@ export function CabinetLogin() {
     });
   };
 
-  const hint = err || (stage === "code" ? `Отправили код на ${phone}` : "Код придёт в СМС в течение минуты");
+  const hint = err || (stage === "code" ? `Отправили код на ${phone}. Не пришёл — проверьте номер: нужен тот, что вы оставляли при записи.` : "Код придёт в СМС в течение минуты");
   return (
     <form onSubmit={e => { e.preventDefault(); next(); }} style={{ width: "100%", maxWidth: 460, margin: "8px auto 0", background: "var(--color-surface)", borderRadius: 32, padding: 32, display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box" }}>
       <span style={kicker}>Личный кабинет</span>
@@ -38,7 +41,7 @@ export function CabinetLogin() {
       <p style={{ margin: 0, fontSize: 15, color: "var(--color-neutral-800)", textWrap: "pretty" }}>Укажите номер, который оставляли при записи. Пароль не нужен — пришлём код в СМС.</p>
       <div className="field">
         <label htmlFor="cab-phone">Телефон</label>
-        <input id="cab-phone" className="input" type="tel" inputMode="numeric" autoComplete="tel" value={phone} placeholder="+7 900 000-00-00"
+        <input id="cab-phone" ref={phoneRef} className="input" type="tel" inputMode="numeric" autoComplete="tel" value={phone} placeholder="+7 900 000-00-00"
           onChange={e => { setPhone(maskPhone(e.target.value)); setErr(""); if (stage === "code") { setStage("phone"); setCode(""); } }}
           style={{ minHeight: 52, fontSize: 18, background: "#fff", borderColor: err && stage === "phone" ? "var(--color-danger)" : "transparent" }} />
       </div>
@@ -54,6 +57,9 @@ export function CabinetLogin() {
       <button type="submit" className="btn btn-primary" disabled={pending} style={{ justifyContent: "space-between", padding: "15px 22px", fontSize: 16 }}>
         {stage === "code" ? "Войти" : "Получить код"}<span>→</span>
       </button>
+      {stage === "code" && (
+        <button type="button" className="btn btn-secondary" onClick={changePhone} style={{ padding: "13px 22px", fontSize: 15, background: "#fff" }}>Изменить номер</button>
+      )}
     </form>
   );
 }
