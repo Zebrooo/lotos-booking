@@ -6,6 +6,7 @@ import type { PaymentProvider, PaymentNotification } from "@/ports/payment";
 import { transition, type BookingStatus } from "@/domain/transitions";
 import { canAppend, type LedgerRow } from "@/domain/money";
 import { UsecaseError } from "./errors";
+import { queueReceipt, queueSms } from "./contact";
 
 export async function ledgerRows(sql: Db, bookingId: number): Promise<LedgerRow[]> {
   return sql<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${bookingId} order by id`;
@@ -50,25 +51,19 @@ export async function applyPaymentNotification(sql: Sql, clock: Clock, input: { 
     }
     if (n.amountKopecks !== p.amountKopecks) return { outcome: "amount_mismatch" as const };
     await tx`update payments set status = 'paid', paid_at = ${now}, raw = ${tx.json(n.raw as never)} where id = ${p.id}`;
-    const [b] = await tx<{ id: number; status: BookingStatus; service: { title: string }; email: string; contactPhone: string; accountEmail: string | null }[]>`
-      select b.id, b.status, b.service, pt.email, coalesce(b.booker_phone, pt.phone) as contact_phone, a.email as account_email
-      from bookings b join patients pt on pt.id = b.patient_id
-      left join patient_accounts a on a.phone = coalesce(b.booker_phone, pt.phone)
-      where b.id = ${p.bookingId} for update of b`;
+    const [b] = await tx<{ id: number; status: BookingStatus }[]>`select b.id, b.status from bookings b where b.id = ${p.bookingId} for update`;
     const rows = await tx<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${b!.id} order by id`;
     const adv: LedgerRow = { kind: "advance", amountKopecks: p.amountKopecks };
     const ok = canAppend(rows, adv);
     if (!ok.ok) throw new Error(`журнал записи ${b!.id}: ${ok.reason}`);
     const [l] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id, channel, detail)
       values (${b!.id}, 'advance', ${p.amountKopecks}, ${p.id}, 'online', ${`Онлайн · ${n.externalId} · чек аванса`}) returning id`;
-    // Чек — на телефон (как в дизайне v2) и на почту, если пациент её указал.
-    const receiptEmail = b!.accountEmail || b!.email || null;
-    await tx`insert into receipts (booking_id, kind, ledger_id, amount_kopecks, phone, email)
-      values (${b!.id}, 'advance', ${l!.id}, ${p.amountKopecks}, ${b!.contactPhone}, ${receiptEmail})`;
+    // Чек — на телефон (как в дизайне v2), копия на почту — по настройке кабинета.
+    await queueReceipt(tx, { bookingId: b!.id, kind: "advance", ledgerId: l!.id, amountKopecks: p.amountKopecks });
     const t = transition(b!.status, "pay", "system");
     if (!t.ok) return { outcome: "paid_after_expiry" as const };
     await tx`update bookings set status = ${t.status}, paid_at = ${now}, hold_until = null where id = ${b!.id}`;
-    await tx`insert into notifications (booking_id, recipient, template, payload) values (${b!.id}, ${b!.email}, 'booking_confirmed', ${tx.json({ title: b!.service.title })})`;
+    await queueSms(tx, b!.id, "booking_confirmed");
     return { outcome: "confirmed" as const };
   });
 }

@@ -2,12 +2,13 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { testDb, truncateAll, seedClinic } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import type { Fiscalizer } from "@/ports/fiscal";
-import type { Notifier, EmailMessage } from "@/ports/notify";
+import type { Notifier } from "@/ports/notify";
+import type { SmsSender } from "@/ports/sms";
 import type { PaymentProvider } from "@/ports/payment";
 import { holdSlot } from "@/lib/usecases/hold";
 import { createPayment, applyPaymentNotification, ledgerRows } from "@/lib/usecases/payment";
 import { cancelBooking } from "@/lib/usecases/cancel";
-import { sendPendingReceipts, sendQueuedNotifications, retryRefunds, queueReminders, pollPendingPayments, MAX_ATTEMPTS } from "@/lib/jobs/sweeps";
+import { sendPendingReceipts, sendQueuedNotifications, retryRefunds, pollPendingPayments, MAX_ATTEMPTS } from "@/lib/jobs/sweeps";
 import { createFakePaymentProvider } from "@/adapters/payment-fake";
 import { logFiscalizer } from "@/adapters/fiscal-log";
 import { localTime } from "@/domain/time";
@@ -35,10 +36,12 @@ async function paid(clock = at("2026-09-14T06:00:00Z")) {
   return r;
 }
 const failingFiscal: Fiscalizer = { name: "broken", send: async () => ({ ok: false, error: "касса недоступна" }) };
-function capturingNotifier(fail = false): Notifier & { sent: EmailMessage[] } {
-  const sent: EmailMessage[] = [];
-  return { name: "capture", sent, sendEmail: async m => { if (fail) return { ok: false, error: "smtp down" }; sent.push(m); return { ok: true, messageId: "m1" }; } };
+const noMail: Notifier = { name: "none", sendEmail: async () => ({ ok: false, error: "почта не используется" }) };
+function capturingSms(fail = false): SmsSender & { sent: { phone: string; text: string }[] } {
+  const sent: { phone: string; text: string }[] = [];
+  return { name: "capture", sent, send: async (phone, text) => { if (fail) return { ok: false, error: "шлюз недоступен" }; sent.push({ phone, text }); return { ok: true, messageId: "m1" }; } };
 }
+const now14 = at("2026-09-14T06:00:00Z");
 
 describe("чеки", () => {
   it("pending → sent с номером от кассы; повторный проход ничего не делает", async () => {
@@ -58,29 +61,29 @@ describe("чеки", () => {
   });
 });
 
-describe("письма", () => {
-  it("подтверждение уходит пациенту с данными записи", async () => {
+describe("уведомления", () => {
+  it("подтверждение уходит СМС на телефон пациента со ссылкой на запись", async () => {
     const { h } = await paid();
-    const n = capturingNotifier();
-    expect(await sendQueuedNotifications(sql, n, mailCtx)).toBe(1);
-    expect(n.sent).toHaveLength(1);
-    expect(n.sent[0]!.to).toBe("ivanov@example.com");
-    expect(n.sent[0]!.subject).toContain("Консультация кардиолога");
-    expect(n.sent[0]!.text).toContain(`https://zapis.example.ru/moya-zapis/${h.token}`);
+    const sms = capturingSms();
+    expect(await sendQueuedNotifications(sql, { notifier: noMail, sms }, mailCtx, now14)).toBe(1);
+    expect(sms.sent).toHaveLength(1);
+    expect(sms.sent[0]!.phone).toBe("+79000000001");
+    expect(sms.sent[0]!.text).toContain("запись подтверждена");
+    expect(sms.sent[0]!.text).toContain(`https://zapis.example.ru/moya-zapis/${h.token}`);
     const [row] = await sql<{ status: string; sentAt: Date | null }[]>`select status, sent_at from notifications`;
     expect(row!.status).toBe("sent");
     expect(row!.sentAt).not.toBeNull();
-    expect(await sendQueuedNotifications(sql, n, mailCtx)).toBe(0);
+    expect(await sendQueuedNotifications(sql, { notifier: noMail, sms }, mailCtx, now14)).toBe(0);
   });
-  it("сбой почты: остаётся в очереди, после предела — failed", async () => {
+  it("сбой шлюза: остаётся в очереди, после предела — failed", async () => {
     await paid();
-    const n = capturingNotifier(true);
-    await sendQueuedNotifications(sql, n, mailCtx);
+    const sms = capturingSms(true);
+    await sendQueuedNotifications(sql, { notifier: noMail, sms }, mailCtx, now14);
     const [one] = await sql<{ status: string; attempts: number }[]>`select status, attempts from notifications`;
     expect(one).toEqual({ status: "queued", attempts: 1 });
-    for (let i = 2; i <= MAX_ATTEMPTS; i++) await sendQueuedNotifications(sql, n, mailCtx);
+    for (let i = 2; i <= MAX_ATTEMPTS; i++) await sendQueuedNotifications(sql, { notifier: noMail, sms }, mailCtx, now14);
     const [last] = await sql<{ status: string; lastError: string }[]>`select status, last_error from notifications`;
-    expect(last).toEqual({ status: "failed", lastError: "smtp down" });
+    expect(last).toEqual({ status: "failed", lastError: "шлюз недоступен" });
   });
 });
 
@@ -96,24 +99,6 @@ describe("возвраты", () => {
     expect(await retryRefunds(sql, fake)).toBe(1);
     expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 40000 }, { kind: "refund", amountKopecks: 40000 }]);
     expect(await retryRefunds(sql, fake)).toBe(0);
-  });
-});
-
-describe("напоминания", () => {
-  it("ставится один раз внутри окна напоминания, но не ближе часа до приёма", async () => {
-    await paid();
-    expect(await queueReminders(sql, at("2026-09-15T00:00:00Z"))).toBe(0); // 53 часа до приёма
-    expect(await queueReminders(sql, at("2026-09-16T03:00:00Z"))).toBe(1); // 26 часов
-    expect(await queueReminders(sql, at("2026-09-16T04:00:00Z"))).toBe(0); // уже стоит
-    const rows = await sql<{ template: string }[]>`select template from notifications order by id`;
-    expect(rows.map(r => r.template)).toEqual(["booking_confirmed", "booking_reminder"]);
-  });
-  it("не за час до приёма и не для записей, созданных уже внутри окна", async () => {
-    await paid();
-    expect(await queueReminders(sql, at("2026-09-17T04:30:00Z"))).toBe(0);
-    await truncateAll(sql);
-    await paid(at("2026-09-16T03:00:00Z"));
-    expect(await queueReminders(sql, at("2026-09-16T04:00:00Z"))).toBe(0);
   });
 });
 

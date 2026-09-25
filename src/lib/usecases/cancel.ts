@@ -9,6 +9,7 @@ import { cancelOutcome, hoursBefore, type CancelOutcome } from "@/domain/cancel"
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
 import { UsecaseError } from "./errors";
 import { loadSettings } from "./settings";
+import { queueReceipt, queueSms } from "./contact";
 
 export type BookingRow = {
   id: number; token: string; patientId: number; status: BookingStatus; startsAt: Date; endsAt: Date;
@@ -46,16 +47,16 @@ export async function cancelBooking(sql: Sql, clock: Clock, input: { token?: str
         const [r] = await tx<{ id: number }[]>`insert into refunds (booking_id, payment_id, amount_kopecks) values (${b.id}, ${pay.id}, ${amount}) returning id`;
         refundId = r!.id;
       }
-      await tx`insert into notifications (booking_id, recipient, template, payload) values (${b.id}, ${b.email}, 'booking_cancelled_refund', ${tx.json({ title: b.service.title, reason: outcome.reason })})`;
+      await queueSms(tx, b.id, "booking_cancelled_refund", { reason: outcome.reason });
     } else if (outcome.kind === "retain") {
       const rows = await tx<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${b.id} order by id`;
       const amount = balanceKopecks(rows);
       const ok = canAppend(rows, { kind: "retain", amountKopecks: amount });
       if (!ok.ok) throw new Error(`журнал записи ${b.id}: ${ok.reason}`);
       await tx`insert into ledger (booking_id, kind, amount_kopecks, note) values (${b.id}, 'retain', ${amount}, 'отмена позже порога')`;
-      await tx`insert into notifications (booking_id, recipient, template, payload) values (${b.id}, ${b.email}, 'booking_cancelled_retained', ${tx.json({ title: b.service.title })})`;
+      await queueSms(tx, b.id, "booking_cancelled_retained");
     } else {
-      await tx`insert into notifications (booking_id, recipient, template, payload) values (${b.id}, ${b.email}, 'booking_cancelled_unpaid', ${tx.json({ title: b.service.title })})`;
+      await queueSms(tx, b.id, "booking_cancelled_unpaid");
     }
     return { outcome, refundId };
   });
@@ -78,7 +79,7 @@ export async function executeRefund(sql: Sql, payment: PaymentProvider, refundId
     const ok = canAppend(rows, { kind: "refund", amountKopecks: r.amountKopecks });
     if (!ok.ok) throw new Error(`журнал записи ${r.bookingId}: ${ok.reason}`);
     const [l] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id) values (${r.bookingId}, 'refund', ${r.amountKopecks}, ${r.paymentId}) returning id`;
-    await tx`insert into receipts (booking_id, kind, ledger_id, amount_kopecks, email) values (${r.bookingId}, 'refund', ${l!.id}, ${r.amountKopecks}, ${r.email})`;
+    await queueReceipt(tx, { bookingId: r.bookingId, kind: "refund", ledgerId: l!.id, amountKopecks: r.amountKopecks });
     await tx`update refunds set status = 'done', external_id = ${res.refundId}, attempts = attempts + 1 where id = ${r.id}`;
   });
   return { ok: true };

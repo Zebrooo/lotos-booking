@@ -7,6 +7,7 @@ import type { Clock } from "@/ports/clock";
 import type { Fiscalizer } from "@/ports/fiscal";
 import type { Notifier } from "@/ports/notify";
 import type { PaymentProvider } from "@/ports/payment";
+import type { SmsSender } from "@/ports/sms";
 import { expireHolds } from "@/lib/usecases/expire";
 import { sendPendingReceipts, sendQueuedNotifications, retryRefunds, queueReminders, pollPendingPayments, type MailSettings } from "./sweeps";
 
@@ -14,7 +15,7 @@ import { sendPendingReceipts, sendQueuedNotifications, retryRefunds, queueRemind
 export const RUNNER_LOCK_KEY = 0x6c6f746f73;
 
 export type RunnerDeps = {
-  sql: Sql; clock: Clock; payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; mail: MailSettings;
+  sql: Sql; clock: Clock; payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; sms: SmsSender; mail: MailSettings;
   log?: (msg: string, err: unknown) => void;
 };
 
@@ -42,7 +43,7 @@ export async function runOnce(d: RunnerDeps): Promise<Record<string, number>> {
       await step("refunds", () => retryRefunds(d.sql, d.payment));
       await step("receipts", () => sendPendingReceipts(d.sql, d.fiscal));
       await step("reminders", () => queueReminders(d.sql, d.clock));
-      await step("notifications", () => sendQueuedNotifications(d.sql, d.notify, d.mail));
+      await step("notifications", () => sendQueuedNotifications(d.sql, { notifier: d.notify, sms: d.sms }, d.mail, d.clock));
       const { errors, ...counts } = result;
       return { ...counts, errors: errors ?? 0 };
     } finally {
