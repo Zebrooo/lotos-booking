@@ -5,7 +5,7 @@ import { rub, hhmmOf, relName, dateNum, wdShort } from "@/lib/format";
 import { RETAIN_WORDING } from "@/lib/texts";
 
 export const SMS_TEMPLATES = [
-  "booking_confirmed", "booking_reminder", "booking_transferred", "booking_expired",
+  "booking_confirmed", "booking_reminder", "booking_transferred", "booking_expired", "booking_consent_given",
   "booking_cancelled_refund", "booking_cancelled_retained", "booking_cancelled_unpaid",
 ] as const;
 export type SmsTemplate = (typeof SMS_TEMPLATES)[number];
@@ -42,6 +42,8 @@ export function renderSms(template: SmsTemplate, c: SmsContext): string {
       return `Лотос: ждём вас ${when}, ${doc} ${c.clinic.address}. Приходите за ${c.arriveEarlyMinutes} мин. Перенести или отменить: ${link}`;
     case "booking_transferred":
       return `Лотос: запись перенесена на ${when}, ${doc} Предоплата перешла на новую запись. ${link}`;
+    case "booking_consent_given":
+      return `Лотос: пациент дал согласие на обработку данных — запись на ${when}, ${doc} в силе. ${link}`;
     case "booking_expired":
       return `Лотос: бронь на ${when} снята — предоплата не поступила вовремя. Записаться снова: ${site}`;
     case "booking_cancelled_refund":
