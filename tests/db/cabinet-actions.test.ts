@@ -3,8 +3,9 @@ import { testDb, truncateAll } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import type { SmsSender } from "@/ports/sms";
 import { seedDemoV2 } from "../../scripts/seed-demo-v2.ts";
-import { requestLoginCode, loginWithCode, updateAccount, markDocumentRead, requestFromCabinet, bookingOfPhone } from "@/lib/cabinet/actions";
+import { requestLoginCode, loginWithCode, updateAccount, markDocumentRead, requestFromCabinet, bookingOfPhone, receiptOfPhone } from "@/lib/cabinet/actions";
 import { phoneBySession } from "@/lib/cabinet/session";
+import { cabinetData } from "@/lib/cabinet/data";
 
 let sql: Sql;
 beforeAll(() => { sql = testDb(); });
@@ -58,12 +59,23 @@ describe("профиль и заявки", () => {
     expect(await requestFromCabinet(sql, clock, phone, "child")).toBe(true);
     const r = await sql<{ kind: string }[]>`select kind from cabinet_requests order by id`;
     expect(r.map(x => x.kind)).toEqual(["tax", "child"]);
+    const d = (await cabinetData(sql, clock, phone))!;
+    expect(d).toMatchObject({ taxRequested: true, taxReadyOn: "2026-10-01" });
   });
   it("запись доступна только со своего телефона", async () => {
     await seedDemoV2(sql, now, { staffPassword: "x" });
     const [mine] = await sql<{ id: number }[]>`select b.id from bookings b join patients p on p.id = b.patient_id where p.phone = ${phone} limit 1`;
     const [other] = await sql<{ id: number }[]>`select b.id from bookings b join patients p on p.id = b.patient_id where p.phone <> ${phone} limit 1`;
-    expect(await bookingOfPhone(sql, phone, mine!.id)).toMatchObject({ id: mine!.id });
+    expect(await bookingOfPhone(sql, phone, mine!.id)).toMatchObject({ id: mine!.id, prepayKopecks: 40000 });
     expect(await bookingOfPhone(sql, phone, other!.id)).toBeNull();
+  });
+  it("чек по строке журнала — только своему телефону, включая возврат", async () => {
+    await seedDemoV2(sql, now, { staffPassword: "x" });
+    const d = (await cabinetData(sql, clock, phone))!;
+    const refund = d.payments.find(p => p.amountKopecks < 0)!;
+    const advance = d.payments.find(p => p.amountKopecks > 0)!;
+    expect(await receiptOfPhone(sql, phone, refund.ledgerId)).toMatchObject({ kind: "refund", amountKopecks: 40000, phone, status: "sent" });
+    expect(await receiptOfPhone(sql, phone, advance.ledgerId)).toMatchObject({ kind: "advance", patient: expect.stringContaining("Смирнова") });
+    expect(await receiptOfPhone(sql, "+79990000000", advance.ledgerId)).toBeNull();
   });
 });

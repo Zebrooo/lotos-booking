@@ -7,7 +7,10 @@ const MON = ["января", "февраля", "марта", "апреля", "м
 
 /** «1 800 ₽» — как n.toLocaleString('ru-RU') + ' ₽' в прототипе. */
 export function rub(kopecks: number): string {
-  return Math.round(kopecks / 100).toLocaleString("ru-RU") + " ₽";
+  // Разделитель разрядов — неразрывный пробел, как у toLocaleString("ru-RU") в браузере,
+  // но без зависимости от ICU конкретной сборки Node.
+  const n = Math.round(kopecks / 100);
+  return (n < 0 ? "-" : "") + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + " ₽";
 }
 
 export const plural = (n: number, a: string, b: string, c: string) => {
@@ -52,3 +55,14 @@ export function reminderLabel(input: { now: Date; startsAt: Date }): string | nu
   if (day === today && at.getTime() === localTime(day, 18 * 60).getTime()) return "сегодня вечером";
   return `${relName(day, today) || dateNum(day)} около 12:00`;
 }
+
+/** Имя в винительном падеже: «за Марию», «за Ивана». Для подписей, не для документов. */
+export function accusativeName(name: string): string {
+  if (/[ая]$/.test(name) && name.length > 1) return name.slice(0, -1) + (name.endsWith("а") ? "у" : "ю");
+  if (/[йь]$/.test(name)) return name.slice(0, -1) + "я";
+  if (/[бвгджзклмнпрстфхцчшщ]$/.test(name)) return name + "а";
+  return name;
+}
+
+/** «Консультация» → «консультация», но «УЗИ» и «ЭКГ» остаются как есть. */
+export const lowerFirst = (s: string) => /^\p{Lu}\p{Ll}/u.test(s) ? s.charAt(0).toLocaleLowerCase("ru") + s.slice(1) : s;

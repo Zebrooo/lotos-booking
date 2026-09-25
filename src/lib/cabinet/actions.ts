@@ -66,8 +66,21 @@ export async function requestFromCabinet(sql: Db, clock: Clock, phone: string, k
 }
 
 /** Запись пациента с этим телефоном (сам или записанный им ребёнок); чужая — null. */
-export async function bookingOfPhone(sql: Db, phone: string, bookingId: number): Promise<{ id: number; token: string } | null> {
-  const [b] = await sql<{ id: number; token: string }[]>`select b.id, b.token from bookings b join patients p on p.id = b.patient_id
+export async function bookingOfPhone(sql: Db, phone: string, bookingId: number): Promise<{ id: number; token: string; prepayKopecks: number } | null> {
+  const [b] = await sql<{ id: number; token: string; service: { prepayKopecks: number } }[]>`select b.id, b.token, b.service from bookings b join patients p on p.id = b.patient_id
     where b.id = ${bookingId} and (p.phone = ${phone} or b.booker_phone = ${phone})`;
-  return b ?? null;
+  return b ? { id: b.id, token: b.token, prepayKopecks: b.service.prepayKopecks } : null;
+}
+
+/** Чек по строке журнала — только владельцу этой записи. */
+export async function receiptOfPhone(sql: Db, phone: string, ledgerId: number): Promise<{
+  kind: "advance" | "settle" | "refund"; amountKopecks: number; createdAt: Date; status: "pending" | "sent" | "failed";
+  phone: string | null; email: string | null; externalId: string | null; serviceTitle: string; patient: string; startsAt: Date;
+} | null> {
+  const [r] = await sql<{ kind: "advance" | "settle" | "refund"; amountKopecks: number; createdAt: Date; status: "pending" | "sent" | "failed";
+    phone: string | null; email: string | null; externalId: string | null; service: { title: string }; patient: string; startsAt: Date }[]>`
+    select r.kind, r.amount_kopecks, r.created_at, r.status, r.phone, nullif(r.email, '') as email, r.external_id, b.service, p.full_name as patient, b.starts_at
+    from receipts r join bookings b on b.id = r.booking_id join patients p on p.id = b.patient_id
+    where r.ledger_id = ${ledgerId} and (p.phone = ${phone} or b.booker_phone = ${phone})`;
+  return r ? { ...r, serviceTitle: r.service.title } : null;
 }
