@@ -43,10 +43,15 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
         ? reserveDeadline({ now, startsAt: input.startsAt, settings: { deadlineMin: settings.reserveDeadlineMin, minLeadMinutes: settings.reserveMinLeadMinutes, beforeVisitMinutes: settings.reserveBeforeVisitMinutes, deskOpensMin: settings.deskOpensMin } })
           ?? addMinutes(now, settings.holdMinutes)
         : null;
+      // Ссылка на согласие пациента (из СМС) переезжает на новую запись вместе с самим согласием.
+      const [ct] = await tx<{ t: string | null }[]>`update bookings b set patient_consent_token = null
+        from (select patient_consent_token as t from bookings where id = ${old.id}) o where b.id = ${old.id} returning o.t`;
       const [nb] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, paid_at, transferred_from_id, source,
-          booker_relation, booker_name, booker_phone, booker_email, pay_mode, pay_deadline, phone_verified_at, patient_consent_at, claim_note, created_at)
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, pay_deadline, phone_verified_at, claim_note, created_at,
+          patient_consent_token, patient_consent_at, patient_consent_id, patient_consent_ip, patient_consent_ua)
         select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, ${unpaid ? old.status : "confirmed"}, paid_at, id, source,
-          booker_relation, booker_name, booker_phone, booker_email, pay_mode, ${deadline}, phone_verified_at, patient_consent_at, claim_note, ${now}
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, ${deadline}, phone_verified_at, claim_note, ${now},
+          ${ct?.t ?? null}, patient_consent_at, patient_consent_id, patient_consent_ip, patient_consent_ua
         from bookings where id = ${old.id} returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${nb!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
