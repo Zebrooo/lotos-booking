@@ -60,4 +60,16 @@ describe("transferBooking", () => {
     const [oldB] = await sql<{ status: string }[]>`select status from bookings where id = ${h.bookingId}`;
     expect(oldB!.status).toBe("confirmed");
   });
+
+  it("неоплаченная бронь переезжает бронью с новым сроком оплаты; денег в журнале нет", async () => {
+    const s = await seedClinic(sql);
+    const clock = at("2026-09-14T06:00:00Z");
+    const h = await holdSlot(sql, clock, { serviceId: s.consultId, doctorId: s.doctorId, startsAt: START, patient, consentIds: s.consentIds });
+    await sql`update bookings set status = 'pending', pay_mode = 'reserve', pay_deadline = '2026-09-14T12:00:00Z', hold_until = null where id = ${h.bookingId}`;
+    const r = await transferBooking(sql, at("2026-09-14T07:00:00Z"), { token: h.token, actor: "patient", doctorId: s.doctorId, startsAt: localTime("2026-09-18", 900) });
+    const [nb] = await sql<{ status: string; payMode: string; payDeadline: Date; paidAt: Date | null }[]>`select status, pay_mode, pay_deadline, paid_at from bookings where id = ${r.newBookingId}`;
+    expect(nb).toMatchObject({ status: "pending", payMode: "reserve", paidAt: null });
+    expect(nb!.payDeadline.toISOString()).toBe("2026-09-14T12:00:00.000Z"); // пн 17:00 по Челябинску
+    expect(await ledgerRows(sql, r.newBookingId)).toEqual([]);
+  });
 });
