@@ -3,20 +3,27 @@ import type { PaymentProvider } from "@/ports/payment";
 import type { Fiscalizer } from "@/ports/fiscal";
 import type { Notifier } from "@/ports/notify";
 import type { Clock } from "@/ports/clock";
+import type { SmsSender } from "@/ports/sms";
 import { createFakePaymentProvider } from "./payment-fake";
 import { logFiscalizer } from "./fiscal-log";
 import { logNotifier } from "./notify-log";
 import { createSmtpNotifier } from "./notify-smtp";
 import nodemailer from "nodemailer";
 import { systemClock } from "./clock-system";
+import { logSms } from "./sms-log";
 
-export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; clock: Clock };
+export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; sms: SmsSender; clock: Clock };
 
 export function loadAdapters(env: Record<string, string | undefined>): Adapters {
   const provider = env.PAYMENT_PROVIDER || "fake";
   if (env.NODE_ENV === "production" && provider === "fake") {
     throw new Error("PAYMENT_PROVIDER=fake запрещён в production");
   }
+  const smsName = env.SMS_PROVIDER || "log";
+  if (env.NODE_ENV === "production" && smsName === "log") {
+    throw new Error("SMS_PROVIDER=log запрещён в production: коды уходили бы в лог, а не пациентам");
+  }
+  if (smsName !== "log") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
   let payment: PaymentProvider;
   if (provider === "fake") {
     payment = createFakePaymentProvider({ baseUrl: env.SITE_URL || "http://localhost:3000", secret: env.FAKE_PAYMENT_SECRET || "dev-secret" });
@@ -35,5 +42,5 @@ export function loadAdapters(env: Record<string, string | undefined>): Adapters 
   } else {
     throw new Error(`Неизвестный NOTIFIER: ${notifyName}`);
   }
-  return { payment, fiscal: logFiscalizer, notify, clock: systemClock };
+  return { payment, fiscal: logFiscalizer, notify, sms: logSms, clock: systemClock };
 }

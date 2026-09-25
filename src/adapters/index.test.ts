@@ -12,8 +12,12 @@ describe("loadAdapters", () => {
     const a = loadAdapters({ NODE_ENV: "development", PAYMENT_PROVIDER: "", FISCALIZER: "", NOTIFIER: "" });
     expect([a.payment.name, a.fiscal.name, a.notify.name]).toEqual(["fake", "log", "log"]);
   });
+  it("СМС: заглушка в лог по умолчанию, в production запрещена", () => {
+    expect(loadAdapters({ NODE_ENV: "development" }).sms.name).toBe("log");
+    expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "real", SMS_PROVIDER: "log" })).toThrow(/SMS_PROVIDER/);
+  });
   it("заглушка платежей в production запрещена", () => {
-    expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/production/);
+    expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/PAYMENT_PROVIDER=fake/);
   });
   it("почта через SMTP требует SMTP_URL и MAIL_FROM", () => {
     expect(() => loadAdapters({ NODE_ENV: "development", NOTIFIER: "smtp" })).toThrow(/SMTP_URL/);
