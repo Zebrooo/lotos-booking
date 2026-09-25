@@ -1,5 +1,6 @@
 // Форматы дат, времени и денег как в прототипах v2. Время — по часам клиники.
-import { type IsoDay, addDays, localDay, localMinutes, weekday, hhmm } from "@/domain/time";
+import { type IsoDay, addDays, localDay, localMinutes, localTime, weekday, hhmm } from "@/domain/time";
+import { reminderAt } from "@/domain/reminder";
 
 const WD = ["", "пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const MON = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
@@ -41,4 +42,13 @@ export function splitName(full: string): { surname: string; given: string } {
 export function shortName(full: string): string {
   const p = full.split(" ");
   return [p[0], ...p.slice(1).map(x => x[0] + ".")].join(" ");
+}
+
+/** «1 октября около 12:00», «сегодня около 12:00» или «сегодня вечером»; null — не напоминаем. */
+export function reminderLabel(input: { now: Date; startsAt: Date }): string | null {
+  const at = reminderAt(input);
+  if (!at) return null;
+  const day = localDay(at), today = localDay(input.now);
+  if (day === today && at.getTime() === localTime(day, 18 * 60).getTime()) return "сегодня вечером";
+  return `${relName(day, today) || dateNum(day)} около 12:00`;
 }
