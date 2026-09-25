@@ -73,4 +73,19 @@ describe("applyPaymentNotification", () => {
     const [b] = await sql<{ status: string }[]>`select status from bookings where id = ${h.bookingId}`;
     expect(b!.status).toBe("expired");
   });
+
+  it("бронь: платёж по ссылке до срока, после — нельзя; оплата подтверждает, чек — на телефон", async () => {
+    const h = await heldBooking();
+    await sql`update bookings set status = 'pending', pay_mode = 'reserve', pay_deadline = '2026-09-14T12:00:00Z', hold_until = null,
+      booker_phone = '+79001234567' where id = ${h.bookingId}`;
+    const late = { now: () => new Date("2026-09-14T12:01:00Z") };
+    await expect(createPayment(sql, { payment, clock: late }, { token: h.token, returnUrl: "http://x/r" })).rejects.toMatchObject({ code: "bad_status" });
+    const { paymentId } = await createPayment(sql, { payment, clock: { now: () => new Date("2026-09-14T11:00:00Z") } }, { token: h.token, returnUrl: "http://x/r" });
+    const r = await applyPaymentNotification(sql, clock, { provider: "fake", notification: { externalId: `fake-${paymentId}`, status: "paid", amountKopecks: 40000, raw: {} } });
+    expect(r).toEqual({ outcome: "confirmed" });
+    const [rc] = await sql<{ phone: string | null; email: string | null }[]>`select phone, email from receipts`;
+    expect(rc).toEqual({ phone: "+79001234567", email: "ivanov@example.com" });
+    const [l] = await sql<{ channel: string; detail: string }[]>`select channel, detail from ledger`;
+    expect(l).toEqual({ channel: "online", detail: `Онлайн · fake-${paymentId} · чек аванса` });
+  });
 });
