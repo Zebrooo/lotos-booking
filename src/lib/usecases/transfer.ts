@@ -1,5 +1,6 @@
-// Перенос — не отмена: старая запись закрывается, новая создаётся сразу
-// подтверждённой, предоплата переезжает без нового платежа и чека.
+// Перенос — не отмена: старая запись закрывается, новая создаётся в том же
+// состоянии. Оплаченная переезжает подтверждённой, предоплата — без нового
+// платежа и чека; неоплаченная бронь переезжает бронью с новым сроком оплаты.
 import { nanoid } from "nanoid";
 import type { Sql } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
@@ -7,6 +8,7 @@ import { localDay, addMinutes } from "@/domain/time";
 import { isSlotFree } from "@/domain/slots";
 import { transition } from "@/domain/transitions";
 import { canTransfer } from "@/domain/cancel";
+import { reserveDeadline } from "@/domain/reserve";
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
 import { UsecaseError, isExclusionViolation } from "./errors";
 import { loadSettings, slotSettings } from "./settings";
@@ -35,10 +37,16 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       }
       const endsAt = addMinutes(input.startsAt, ctx.service.durationMin);
       const token = nanoid(21);
+      const unpaid = old.status === "pending" || old.status === "claimed";
+      const deadline = unpaid
+        ? reserveDeadline({ now, startsAt: input.startsAt, settings: { deadlineMin: settings.reserveDeadlineMin, minLeadMinutes: settings.reserveMinLeadMinutes, beforeVisitMinutes: settings.reserveBeforeVisitMinutes, deskOpensMin: settings.deskOpensMin } })
+          ?? addMinutes(now, settings.holdMinutes)
+        : null;
       const [nb] = await tx<{ id: number }[]>`insert into bookings (token, patient_id, service_id, service, resource_id, starts_at, ends_at, status, paid_at, transferred_from_id, source,
-          booker_relation, booker_name, booker_phone, booker_email, created_at)
-        select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, 'confirmed', paid_at, id, source,
-          booker_relation, booker_name, booker_phone, booker_email, ${now} from bookings where id = ${old.id} returning id`;
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, pay_deadline, phone_verified_at, patient_consent_at, claim_note, created_at)
+        select ${token}, patient_id, service_id, service, ${input.doctorId}, ${input.startsAt}, ${endsAt}, ${unpaid ? old.status : "confirmed"}, paid_at, id, source,
+          booker_relation, booker_name, booker_phone, booker_email, pay_mode, ${deadline}, phone_verified_at, patient_consent_at, claim_note, ${now}
+        from bookings where id = ${old.id} returning id`;
       for (const rid of ctx.resourceIds) {
         await tx`insert into booking_resources (booking_id, resource_id, starts_at, ends_at) values (${nb!.id}, ${rid}, ${input.startsAt}, ${endsAt})`;
       }
@@ -48,8 +56,8 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
       if (amount > 0) {
         const out = canAppend(rows, { kind: "transfer_out", amountKopecks: amount });
         if (!out.ok) throw new Error(`журнал записи ${old.id}: ${out.reason}`);
-        await tx`insert into ledger (booking_id, kind, amount_kopecks, note) values (${old.id}, 'transfer_out', ${amount}, ${`перенос в запись ${nb!.id}`})`;
-        await tx`insert into ledger (booking_id, kind, amount_kopecks, note) values (${nb!.id}, 'transfer_in', ${amount}, ${`перенос из записи ${old.id}`})`;
+        await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${old.id}, 'transfer_out', ${amount}, ${`перенос в запись ${nb!.id}`}, 'transfer', ${`на запись № ${nb!.id}`})`;
+        await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${nb!.id}, 'transfer_in', ${amount}, ${`перенос из записи ${old.id}`}, 'transfer', ${`с записи № ${old.id}`})`;
       }
       await tx`insert into notifications (booking_id, recipient, template, payload) values (${nb!.id}, ${old.email}, 'booking_transferred', ${tx.json({ title: old.service.title })})`;
       return { newBookingId: nb!.id, newToken: token };
