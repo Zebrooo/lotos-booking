@@ -32,7 +32,7 @@ export async function holdSlot(sql: Sql, clock: Clock, input: HoldInput): Promis
   }
   const day = localDay(input.startsAt);
   const ctx = await loadSlotContext(sql, { serviceId: input.serviceId, doctorId: input.doctorId, day });
-  const check = isSlotFree({ ...ctx, resourceIds: ctx.resourceIds, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings) });
+  const check = isSlotFree({ ...ctx, resourceIds: ctx.resourceIds, durationMin: ctx.service.durationMin, startsAt: input.startsAt, now, settings: slotSettings(settings, ctx.service.durationMin, localDay(now)) });
   if (!check.ok) {
     const code = ({ closed: "slot_closed", past: "slot_past", beyond_horizon: "beyond_horizon", taken: "slot_taken" } as const)[check.reason];
     throw new UsecaseError(code, "окно недоступно");
