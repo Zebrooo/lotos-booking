@@ -18,7 +18,8 @@ const clock = { now: () => new Date("2026-09-14T06:00:00Z") };
 const fake = createFakePaymentProvider({ baseUrl: "http://localhost:3000", secret: "s" });
 const quiet: Notifier = { name: "quiet", sendEmail: async () => ({ ok: true, messageId: "m" }) };
 const mail = { siteUrl: "http://localhost:3000", clinic: { name: "Лотос", address: "Челябинск", phone: "+7 351 000-00-00" } };
-const deps = (over: Partial<RunnerDeps> = {}): RunnerDeps => ({ sql, clock, payment: fake, fiscal: logFiscalizer, notify: quiet, mail, ...over });
+const sms = { name: "quiet", send: async () => ({ ok: true as const, messageId: "s" }) };
+const deps = (over: Partial<RunnerDeps> = {}): RunnerDeps => ({ sql, clock, payment: fake, fiscal: logFiscalizer, notify: quiet, sms, mail, ...over });
 
 async function paidBooking() {
   const s = await seedClinic(sql);

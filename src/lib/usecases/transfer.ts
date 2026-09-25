@@ -14,6 +14,7 @@ import { UsecaseError, isExclusionViolation } from "./errors";
 import { loadSettings, slotSettings } from "./settings";
 import { loadSlotContext } from "./hold";
 import { findBooking } from "./cancel";
+import { queueSms } from "./contact";
 
 export async function transferBooking(sql: Sql, clock: Clock, input: { token?: string; bookingId?: number; actor: "patient" | "clinic"; doctorId: number; startsAt: Date }): Promise<{ newBookingId: number; newToken: string }> {
   const now = clock.now();
@@ -59,7 +60,7 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
         await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${old.id}, 'transfer_out', ${amount}, ${`перенос в запись ${nb!.id}`}, 'transfer', ${`на запись № ${nb!.id}`})`;
         await tx`insert into ledger (booking_id, kind, amount_kopecks, note, channel, detail) values (${nb!.id}, 'transfer_in', ${amount}, ${`перенос из записи ${old.id}`}, 'transfer', ${`с записи № ${old.id}`})`;
       }
-      await tx`insert into notifications (booking_id, recipient, template, payload) values (${nb!.id}, ${old.email}, 'booking_transferred', ${tx.json({ title: old.service.title })})`;
+      await queueSms(tx, nb!.id, "booking_transferred");
       return { newBookingId: nb!.id, newToken: token };
     });
   } catch (e) {

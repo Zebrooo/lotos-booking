@@ -5,7 +5,7 @@ import { startRunner } from "./runner";
 export function startAppRunner(): void {
   const { sql, adapters, config } = app();
   if (config.jobsDisabled) return;
-  startRunner({ sql, clock: adapters.clock, payment: adapters.payment, fiscal: adapters.fiscal, notify: adapters.notify,
+  startRunner({ sql, clock: adapters.clock, payment: adapters.payment, fiscal: adapters.fiscal, notify: adapters.notify, sms: adapters.sms,
     mail: { siteUrl: config.siteUrl, clinic: config.clinic } }, config.jobsIntervalMs);
   console.info(`[фон] цикл запущен, шаг ${config.jobsIntervalMs} мс`);
 }

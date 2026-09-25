@@ -6,6 +6,7 @@ import { transition } from "@/domain/transitions";
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
 import { UsecaseError } from "./errors";
 import { findBooking } from "./cancel";
+import { queueReceipt } from "./contact";
 
 async function close(sql: Sql, clock: Clock, bookingId: number, event: "done" | "no_show"): Promise<void> {
   void clock.now();
@@ -23,7 +24,7 @@ async function close(sql: Sql, clock: Clock, bookingId: number, event: "done" | 
     if (!ok.ok) throw new Error(`журнал записи ${b.id}: ${ok.reason}`);
     const [l] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, note) values (${b.id}, ${kind}, ${amount}, ${event === "done" ? "зачёт при оказании" : "неявка"}) returning id`;
     if (event === "done") {
-      await tx`insert into receipts (booking_id, kind, ledger_id, amount_kopecks, email) values (${b.id}, 'settle', ${l!.id}, ${amount}, ${b.email})`;
+      await queueReceipt(tx, { bookingId: b.id, kind: "settle", ledgerId: l!.id, amountKopecks: amount });
     }
   });
 }
