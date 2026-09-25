@@ -5,16 +5,20 @@ import { useRouter } from "next/navigation";
 import { Toast } from "@/components/common/toast";
 
 export function MyBookingActions(props: {
-  when: string; docShort: string; paid: boolean; paidMinutesAgo: number | null; rescheduleHref: string | null;
+  when: string; docShort: string; paid: boolean; paidMinutesAgo: number | null; rescheduleHref: string | null; refundHow?: "card" | "cash" | "bank";
   canPay: boolean; prepayLabel: string; pay: () => Promise<void>; cancel: () => Promise<void>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const refundSub = props.paid
-    ? `${props.paidMinutesAgo != null && props.paidMinutesAgo < 60 ? "Вы оплатили меньше часа назад — возврат полный, без вопросов. " : ""}Деньги вернутся на ту же карту; срок зачисления зависит от банка. Чек возврата пришлём в СМС.`
-    : "Время освободится для других пациентов.";
+  const how = props.refundHow ?? "card";
+  const refundTitle = !props.paid ? "Предоплата не вносилась"
+    : how === "cash" ? `Вернём ${props.prepayLabel} наличными` : how === "bank" ? `Вернём ${props.prepayLabel} переводом` : `Вернём ${props.prepayLabel} на карту`;
+  const refundSub = !props.paid ? "Время освободится для других пациентов."
+    : how === "cash" ? "Предоплату вы вносили в регистратуре — заберите её там с паспортом. Чек возврата пришлём в СМС."
+    : how === "bank" ? "Регистратура свяжется с вами, чтобы уточнить реквизиты. Чек возврата пришлём в СМС."
+    : `${props.paidMinutesAgo != null && props.paidMinutesAgo < 60 ? "Вы оплатили меньше часа назад — возврат полный, без вопросов. " : ""}Деньги вернутся на ту же карту; срок зачисления зависит от банка. Чек возврата пришлём в СМС.`;
   return (
     <>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -31,7 +35,7 @@ export function MyBookingActions(props: {
             <span id="cancel-title" className="dialog-title">Отменить запись?</span>
             <span style={{ fontSize: 15 }}>{props.when} · {props.docShort}</span>
             <div style={{ background: "var(--color-surface)", padding: 14, display: "flex", flexDirection: "column", gap: 4, borderRadius: 24 }}>
-              <span style={{ fontWeight: 800 }}>{props.paid ? `Вернём ${props.prepayLabel} на карту` : "Предоплата не вносилась"}</span>
+              <span style={{ fontWeight: 800 }}>{refundTitle}</span>
               <span style={{ fontSize: 13, textWrap: "pretty" }}>{refundSub}</span>
             </div>
             <div className="dialog-actions" style={{ justifyContent: "flex-start" }}>

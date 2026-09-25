@@ -7,7 +7,7 @@ import { requestLoginCode, loginWithCode, updateAccount, markDocumentRead, reque
 import { endPatientSession } from "@/lib/cabinet/session";
 import { setSessionCookie, readSessionCookie, clearSessionCookie } from "@/lib/cabinet/cookie";
 import { currentPhone } from "@/lib/cabinet/session-view";
-import { cabinetData } from "@/lib/cabinet/data";
+import { cabinetData, REFUND_HOW } from "@/lib/cabinet/data";
 import { createPayment } from "@/lib/usecases/payment";
 import { cancelBooking } from "@/lib/usecases/cancel";
 import { UsecaseError } from "@/lib/usecases/errors";
@@ -68,7 +68,10 @@ export async function cancelVisitAction(bookingId: number): Promise<{ ok: boolea
   if (!b) return { ok: false, message: "Запись не найдена" };
   try {
     const r = await cancelBooking(sql, adapters.clock, { bookingId: b.id, actor: "patient" });
-    return { ok: true, message: r.outcome.kind === "refund" ? `Запись отменена · ${rub(b.prepayKopecks)} вернутся на карту` : "Запись отменена" };
+    if (r.refundId == null) return { ok: true, message: "Запись отменена" };
+    const [rf] = await sql<{ method: "provider" | "cash" | "bank" }[]>`select method from refunds where id = ${r.refundId}`;
+    const how = rf?.method === "cash" ? "cash" : rf?.method === "bank" ? "bank" : "card";
+    return { ok: true, message: `Запись отменена · ${rub(b.prepayKopecks)} вернутся ${REFUND_HOW[how]}` };
   } catch (e) {
     if (e instanceof UsecaseError) return { ok: false, message: "Эту запись уже нельзя отменить" };
     throw e;

@@ -42,12 +42,16 @@ export async function cancelBooking(sql: Sql, clock: Clock, input: { token?: str
     if (outcome.kind === "refund") {
       const rows = await tx<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${b.id} order by id`;
       const amount = balanceKopecks(rows);
-      const [pay] = await tx<{ id: number }[]>`select id from payments where booking_id = ${b.id} and status = 'paid' order by id desc limit 1`;
-      if (amount > 0 && pay) {
-        const [r] = await tx<{ id: number }[]>`insert into refunds (booking_id, payment_id, amount_kopecks) values (${b.id}, ${pay.id}, ${amount}) returning id`;
+      // Возврат — тем же путём, каким пришёл аванс. После переносов аванс
+      // живёт на новой записи, а платёж — на исходной: идём по цепочке.
+      const src = await advanceSource(tx, b.id);
+      const method: "provider" | "cash" | "bank" = src.paymentId ? "provider" : src.channel === "cash" ? "cash" : "bank";
+      if (amount > 0) {
+        const [r] = await tx<{ id: number }[]>`insert into refunds (booking_id, payment_id, amount_kopecks, method)
+          values (${b.id}, ${src.paymentId}, ${amount}, ${method}) returning id`;
         refundId = r!.id;
       }
-      await queueSms(tx, b.id, "booking_cancelled_refund", { reason: outcome.reason });
+      await queueSms(tx, b.id, "booking_cancelled_refund", { reason: outcome.reason, method });
     } else if (outcome.kind === "retain") {
       const rows = await tx<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${b.id} order by id`;
       const amount = balanceKopecks(rows);
@@ -60,6 +64,18 @@ export async function cancelBooking(sql: Sql, clock: Clock, input: { token?: str
     }
     return { outcome, refundId };
   });
+}
+
+/** Откуда пришёл аванс записи: платёж провайдера и канал последнего аванса — с учётом переносов. */
+export async function advanceSource(tx: Db, bookingId: number): Promise<{ paymentId: number | null; channel: string | null }> {
+  const [r] = await tx<{ paymentId: number | null; channel: string | null }[]>`
+    with recursive chain(id, from_id) as (
+      select id, transferred_from_id from bookings where id = ${bookingId}
+      union all select b.id, b.transferred_from_id from bookings b join chain c on b.id = c.from_id
+    )
+    select (select p.id from payments p where p.booking_id in (select id from chain) and p.status = 'paid' order by p.id desc limit 1) as payment_id,
+      (select l.channel from ledger l where l.booking_id in (select id from chain) and l.kind = 'advance' order by l.id desc limit 1) as channel`;
+  return { paymentId: r?.paymentId ?? null, channel: r?.channel ?? null };
 }
 
 /** Исполнить возврат у провайдера; при успехе — ledger.refund и чек возврата. Повтор безвреден. */
@@ -78,7 +94,8 @@ export async function executeRefund(sql: Sql, payment: PaymentProvider, refundId
     const rows = await tx<LedgerRow[]>`select kind, amount_kopecks from ledger where booking_id = ${r.bookingId} order by id`;
     const ok = canAppend(rows, { kind: "refund", amountKopecks: r.amountKopecks });
     if (!ok.ok) throw new Error(`журнал записи ${r.bookingId}: ${ok.reason}`);
-    const [l] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id) values (${r.bookingId}, 'refund', ${r.amountKopecks}, ${r.paymentId}) returning id`;
+    const [l] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id, channel, detail)
+      values (${r.bookingId}, 'refund', ${r.amountKopecks}, ${r.paymentId}, 'online', 'на карту') returning id`;
     await queueReceipt(tx, { bookingId: r.bookingId, kind: "refund", ledgerId: l!.id, amountKopecks: r.amountKopecks });
     await tx`update refunds set status = 'done', external_id = ${res.refundId}, attempts = attempts + 1 where id = ${r.id}`;
   });

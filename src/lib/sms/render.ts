@@ -17,6 +17,8 @@ export type SmsContext = {
   prepayKopecks: number; arriveEarlyMinutes: number;
   status: string; payDeadline: Date | null;
   refundReason: "cooling_off" | "before_threshold" | "by_clinic" | null;
+  /** Как вернём аванс: на карту через эквайринг, наличными в кассе или переводом. */
+  refundMethod?: "provider" | "cash" | "bank";
 };
 
 export const isSmsTemplate = (v: string): v is SmsTemplate => (SMS_TEMPLATES as readonly string[]).includes(v);
@@ -46,10 +48,14 @@ export function renderSms(template: SmsTemplate, c: SmsContext): string {
       return `Лотос: пациент дал согласие на обработку данных — запись на ${when}, ${doc} в силе. ${link}`;
     case "booking_expired":
       return `Лотос: бронь на ${when} снята — предоплата не поступила вовремя. Записаться снова: ${site}`;
-    case "booking_cancelled_refund":
+    case "booking_cancelled_refund": {
+      const back = c.refundMethod === "cash" ? `Предоплату ${prepay} вернём наличными в регистратуре.`
+        : c.refundMethod === "bank" ? `Предоплату ${prepay} вернём переводом — регистратура уточнит реквизиты.`
+        : `Предоплата ${prepay} вернётся на карту.`;
       return c.refundReason === "by_clinic"
-        ? `Лотос: клиника отменила запись на ${when}. Предоплата ${prepay} вернётся на карту. Вопросы: ${c.clinic.phone}`
-        : `Лотос: запись на ${when} отменена. Предоплата ${prepay} вернётся на карту.`;
+        ? `Лотос: клиника отменила запись на ${when}. ${back} Вопросы: ${c.clinic.phone}`
+        : `Лотос: запись на ${when} отменена. ${back}`;
+    }
     case "booking_cancelled_retained":
       return `Лотос: запись на ${when} отменена. Предоплата ${prepay} ${RETAIN_WORDING}. Вопросы: ${c.clinic.phone}`;
     case "booking_cancelled_unpaid":

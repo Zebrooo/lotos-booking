@@ -22,7 +22,9 @@ function states(v: BookingView, today: string) {
     case "cancelled":
       return { state: "Отменена", stateSub: v.cancelledBy === "clinic" ? `Клиника отменила запись${v.cancelReason ? `: ${v.cancelReason}` : ""}` : `Вы отменили запись ${v.cancelledAt ? at(v.cancelledAt) : ""}`, color: "var(--color-danger)",
         money: paid ? (v.money === "refunded" ? `${prepay} возвращены` : "Возврат оформлен") : "Не вносилась",
-        moneySub: paid ? `${prepay} вернутся на карту. Срок зачисления зависит от вашего банка. Чек возврата — в СМС.` : "" };
+        moneySub: paid ? (v.refundHow === "cash" ? `${prepay} выдаст регистратура наличными. Чек возврата — в СМС.`
+          : v.refundHow === "bank" ? `${prepay} вернём переводом — регистратура уточнит реквизиты. Чек возврата — в СМС.`
+          : `${prepay} вернутся на карту. Срок зачисления зависит от вашего банка. Чек возврата — в СМС.`) : "" };
     case "confirmed":
       return { state: "Подтверждена", stateSub: `Ждём вас ${when}`, color: "var(--color-text)", money: `${prepay} получены`, moneySub: "Чек предоплаты отправлен в СМС · засчитается в стоимость" };
     case "claimed":
@@ -74,7 +76,7 @@ export default async function MyBooking(props: PageProps<"/moya-zapis/[token]">)
           ))}
         </div>
         {live && (
-          <MyBookingActions when={when} docShort={surname} paid={v.money === "advance_held"}
+          <MyBookingActions when={when} docShort={surname} paid={v.money === "advance_held"} refundHow={v.refundHow}
             paidMinutesAgo={v.paidAt ? (now.getTime() - v.paidAt.getTime()) / 60000 : null}
             rescheduleHref={v.canTransfer ? `/vrach/${v.doctorId}?svc=${v.serviceId}&perenos=${v.token}` : null}
             canPay={v.canPay && v.status !== "held"} prepayLabel={rub(v.prepayKopecks)}

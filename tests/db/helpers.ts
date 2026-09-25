@@ -8,7 +8,7 @@ export async function truncateAll(sql: Sql): Promise<void> {
     booking_resources, bookings, consents, patients, schedule_exceptions, schedule_rules,
     service_resources, resources, services, admins, group_days, site_quota, sms_codes,
     patient_accounts, patient_sessions, medical_documents, document_reads, cabinet_requests,
-    doctor_requests, bank_incoming restart identity cascade`;
+    doctor_requests, bank_incoming, staff_sessions restart identity cascade`;
   await sql`update settings set free_cancel_hours = 24, hold_minutes = 15, lead_minutes = 60,
     horizon_days = 30, cooling_off_minutes = 60, slot_step_min = 15, online_booking_paused = false,
     pay_model = 'both', reserve_deadline_min = 1020, reserve_min_lead_minutes = 60,
