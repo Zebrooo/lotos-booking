@@ -110,7 +110,8 @@ export async function retryRefunds(sql: Sql, payment: PaymentProvider, limit = 1
  * накануне после полудня — в 18:00 (domain/reminder). Время считается от
  * момента записи, поэтому записавшимся вечером накануне СМС не шлём: им только
  * что пришло СМС о записи. Один раз на запись; в день приёма — уже нет.
- * Неоплаченной брони тоже напоминаем — со сроком оплаты.
+ * Неоплаченной брони тоже напоминаем — со сроком оплаты. Только записям с
+ * сайта: записанным по телефону и на стойке СМС не шлём (дизайн v2, CRM).
  */
 export async function queueReminders(sql: Sql, clock: Clock): Promise<number> {
   const now = clock.now();
@@ -119,7 +120,7 @@ export async function queueReminders(sql: Sql, clock: Clock): Promise<number> {
     select b.id, b.starts_at, b.created_at
     from bookings b join patients p on p.id = b.patient_id
     left join patient_accounts a on a.phone = coalesce(b.booker_phone, p.phone)
-    where b.status in ('confirmed', 'claimed', 'pending')
+    where b.status in ('confirmed', 'claimed', 'pending') and b.source = 'site'
       and b.starts_at > ${now} and b.starts_at <= ${addMinutes(now, 48 * 60)}
       and coalesce(a.notify_remind, true)
       and not exists (select 1 from notifications n where n.booking_id = b.id and n.template = 'booking_reminder')
