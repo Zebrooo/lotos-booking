@@ -77,7 +77,7 @@ describe("СМС и чеки по телефону", () => {
     const v = await paid();
     const sms = capture();
     expect(await sendQueuedNotifications(sql, { notifier: { name: "x", sendEmail: async () => ({ ok: false, error: "не должно" }) }, sms }, mail, at(T0))).toBe(1);
-    expect(sms.sent).toEqual([{ phone: PHONE, text: `Лотос: запись подтверждена — чт, 17 сентября в 10:00, Жаворонкова А. А. Предоплата 400 ₽ получена. https://zapis.example.ru/moya-zapis/${v.token}` }]);
+    expect(sms.sent).toEqual([{ phone: PHONE, text: `Лотос: запись подтверждена — чт, 17 сентября в 10:00. Предоплата 400 ₽ получена. https://zapis.example.ru/moya-zapis/${v.token}` }]);
     const [n] = await sql<{ status: string }[]>`select status from notifications`;
     expect(n!.status).toBe("sent");
   });

@@ -39,7 +39,10 @@ export async function issueCode(
   if (recent.length >= MAX_PER_HOUR) return { ok: false, reason: "too_many" };
   const code = (deps.genCode ?? randomCode)();
   const sent = await deps.sms.send(input.phone, input.text(code));
-  if (!sent.ok) return { ok: false, reason: "send_failed" };
+  if (!sent.ok) {
+    console.error(`[смс] ${deps.sms.name}: ${sent.error}`);
+    return { ok: false, reason: "send_failed" };
+  }
   await sql`insert into sms_codes (phone, purpose, booking_id, code_hash, expires_at, created_at)
     values (${input.phone}, ${input.purpose}, ${input.bookingId ?? null}, ${hash(deps.pepper, input.phone, code)},
       ${new Date(now.getTime() + CODE_TTL_MINUTES * 60_000)}, ${now})`;

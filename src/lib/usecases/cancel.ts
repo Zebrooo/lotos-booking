@@ -1,6 +1,6 @@
-// Отмена: статус и ресурсы — сразу, в транзакции. Деньги: удержание пишется
-// сразу, возврат — строкой refunds, а ledger.refund появляется после ответа
-// провайдера в executeRefund (вызывает фоновая задача или администратор).
+// Отмена: статус и ресурсы — сразу, в транзакции. Полный возврат создаётся
+// строкой refunds, а ledger.refund появляется после ответа провайдера
+// в executeRefund (вызывает фоновая задача или администратор).
 import type { Sql, Db } from "@/lib/db/client";
 import type { Clock } from "@/ports/clock";
 import type { PaymentProvider } from "@/ports/payment";

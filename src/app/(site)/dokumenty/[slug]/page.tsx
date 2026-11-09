@@ -8,12 +8,12 @@ import { app } from "@/lib/app";
 import { getLatestConsent, type ConsentKind } from "@/lib/queries/consents";
 import { localDay } from "@/domain/time";
 import { Main } from "@/components/site/stepper";
+import { LEGAL_PAGES } from "@/lib/legal/documents";
 
-const DOCS: Record<string, { title: string; consent?: ConsentKind }> = {
-  predoplata: { title: "Условия предоплаты", consent: "prepay_terms" },
+const DOCS: Record<string, { title: string; consent?: ConsentKind; body?: string }> = {
+  predoplata: { title: "Договор-оферта на платные медицинские услуги", consent: "prepay_terms" },
   "soglasie-pd": { title: "Согласие на обработку персональных данных", consent: "personal_data" },
-  pravila: { title: "Правила оказания платных медицинских услуг" },
-  politika: { title: "Политика обработки персональных данных" },
+  ...LEGAL_PAGES,
 };
 const ru = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 
@@ -34,10 +34,10 @@ export default async function Document(props: PageProps<"/dokumenty/[slug]">) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-neutral-700)" }}>Документы · {config.clinic.legalName}</span>
           <h2 style={{ margin: 0, fontSize: "var(--h2-size)", lineHeight: 1.05, letterSpacing: "-0.025em", textWrap: "balance" }}>{doc.title}</h2>
-          {consent && <span style={{ fontSize: 14, color: "var(--color-neutral-700)" }}>Редакция {consent.version} от {ru(localDay(consent.publishedAt))}</span>}
+          {(consent || doc.body) && <span style={{ fontSize: 14, color: "var(--color-neutral-700)" }}>{consent ? `Редакция ${consent.version} от ${ru(localDay(consent.publishedAt))}` : "Действующая редакция документа"}</span>}
         </div>
         <div style={{ background: "var(--color-surface)", borderRadius: 24, padding: 24, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-line", textWrap: "pretty" }}>
-          {consent ? consent.body : "Текст документа готовит юрист клиники; он будет опубликован до запуска онлайн-записи. Пока его можно получить в регистратуре."}
+          {consent?.body ?? doc.body ?? "Документ временно недоступен. Получите его в регистратуре клиники."}
         </div>
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>{config.clinic.legalName} · {config.clinic.address} · лицензия {config.clinic.license} · {config.clinic.phone}</span>
       </article>

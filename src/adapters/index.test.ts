@@ -16,6 +16,11 @@ describe("loadAdapters", () => {
     expect(loadAdapters({ NODE_ENV: "development" }).sms.name).toBe("log");
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "real", SMS_PROVIDER: "log" })).toThrow(/SMS_PROVIDER/);
   });
+  it("SMSC требует API-ключ и зарегистрированное имя отправителя", () => {
+    expect(() => loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsc" })).toThrow(/SMSC_API_KEY/);
+    const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsc", SMSC_API_KEY: "key", SMSC_SENDER: "LOTOS" });
+    expect(a.sms.name).toBe("smsc");
+  });
   it("заглушка платежей в production запрещена", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/PAYMENT_PROVIDER=fake/);
   });

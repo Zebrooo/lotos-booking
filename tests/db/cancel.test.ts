@@ -50,14 +50,14 @@ describe("cancelBooking", () => {
     expect(await ledgerRows(sql, h.bookingId)).toHaveLength(2);
   });
 
-  it("после порога: удержание в журнале, возврата нет, письмо в очереди", async () => {
+  it("после порога: полный возврат и письмо в очереди", async () => {
     const h = await paidBooking();
     const r = await cancelBooking(sql, at("2026-09-16T20:00:00Z"), { token: h.token, actor: "patient" });
-    expect(r.outcome).toEqual({ kind: "retain", reason: "after_threshold" });
-    expect(r.refundId).toBeNull();
-    expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 40000 }, { kind: "retain", amountKopecks: 40000 }]);
+    expect(r.outcome).toEqual({ kind: "refund", reason: "before_threshold" });
+    expect(r.refundId).not.toBeNull();
+    expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 40000 }]);
     const mails = await sql<{ template: string }[]>`select template from notifications where booking_id = ${h.bookingId} order by id`;
-    expect(mails.map(m => m.template)).toEqual(["booking_confirmed", "booking_cancelled_retained"]);
+    expect(mails.map(m => m.template)).toEqual(["booking_confirmed", "booking_cancelled_refund"]);
   });
 
   it("клиника отменяет впритык — всё равно возврат", async () => {

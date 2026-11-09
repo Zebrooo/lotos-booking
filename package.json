@@ -19,7 +19,8 @@
     "db:migrate": "node scripts/migrate.ts",
     "db:new": "bash scripts/new-migration.sh",
     "audit": "pnpm audit --audit-level=low",
-    "db:seed": "node scripts/seed-demo-v2.ts"
+    "db:seed": "node scripts/seed-demo-v2.ts",
+    "legal:publish": "node scripts/publish-legal.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.1",

@@ -143,7 +143,7 @@ export function BookingForm(props: {
           </label>
           <label onClick={e => { if ((e.target as HTMLElement).tagName !== "A") { e.preventDefault(); setC2(!c2); } }} style={{ display: "grid", gridTemplateColumns: "24px minmax(0,1fr)", gap: 10, cursor: "pointer", fontSize: 14, alignItems: "start" }}>
             <span role="checkbox" aria-checked={c2} tabIndex={0} onKeyDown={e => { if (e.key === " ") { e.preventDefault(); setC2(!c2); } }} style={{ width: 22, height: 22, borderRadius: 7, border: `2px solid ${k2.b}`, background: k2.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{k2.m}</span>
-            <span>Ознакомлен с <a href="/dokumenty/predoplata" target="_blank">условиями предоплаты</a>: {props.prepayLabel} засчитываются в стоимость приёма; при отмене предоплата возвращается</span>
+            <span>Принимаю <a href="/dokumenty/predoplata" target="_blank">договор-оферту и условия предоплаты</a>: {props.prepayLabel} засчитываются в стоимость приёма; при отмене предоплата возвращается полностью</span>
           </label>
           {consentErr && (
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-danger)", display: "flex", gap: 8, alignItems: "center" }}>

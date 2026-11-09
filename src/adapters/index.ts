@@ -11,6 +11,7 @@ import { createSmtpNotifier } from "./notify-smtp";
 import nodemailer from "nodemailer";
 import { systemClock } from "./clock-system";
 import { logSms } from "./sms-log";
+import { createSmscSms } from "./sms-smsc";
 
 export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; sms: SmsSender; clock: Clock };
 
@@ -23,7 +24,14 @@ export function loadAdapters(env: Record<string, string | undefined>): Adapters 
   if (env.NODE_ENV === "production" && smsName === "log") {
     throw new Error("SMS_PROVIDER=log запрещён в production: коды уходили бы в лог, а не пациентам");
   }
-  if (smsName !== "log") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
+  if (smsName !== "log" && smsName !== "smsc") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
+  let sms: SmsSender;
+  if (smsName === "log") {
+    sms = logSms;
+  } else {
+    if (!env.SMSC_API_KEY || !env.SMSC_SENDER) throw new Error("SMS_PROVIDER=smsc требует SMSC_API_KEY и SMSC_SENDER");
+    sms = createSmscSms({ apiKey: env.SMSC_API_KEY, sender: env.SMSC_SENDER });
+  }
   let payment: PaymentProvider;
   if (provider === "fake") {
     payment = createFakePaymentProvider({ baseUrl: env.SITE_URL || "http://localhost:3000", secret: env.FAKE_PAYMENT_SECRET || "dev-secret" });
@@ -42,5 +50,5 @@ export function loadAdapters(env: Record<string, string | undefined>): Adapters 
   } else {
     throw new Error(`Неизвестный NOTIFIER: ${notifyName}`);
   }
-  return { payment, fiscal: logFiscalizer, notify, sms: logSms, clock: systemClock };
+  return { payment, fiscal: logFiscalizer, notify, sms, clock: systemClock };
 }
