@@ -66,6 +66,7 @@ export default async function Done(props: PageProps<"/zapis/[token]">) {
             ))}
           </div>
           <span style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>{remind ? `Напомним по СМС ${remind}. ` : ""}Отменить или перенести запись можно в любой момент на странице «Моя запись» — ссылка в СМС.</span>
+          <span style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>Номер записи — идентификатор договора. <Link href="/dokumenty/predoplata" className="plain-link">Условия договора-оферты и порядок получения его экземпляра</Link>.</span>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link href={`/moya-zapis/${v.token}`} className="btn btn-primary" style={{ padding: "14px 16px", minWidth: 220, justifyContent: "space-between" }}>Моя запись<span>→</span></Link>
             <Link href="/" className="btn btn-secondary" style={{ padding: "14px 16px" }}>Записать ещё кого-то</Link>

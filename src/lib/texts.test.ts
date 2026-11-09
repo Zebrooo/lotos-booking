@@ -37,12 +37,11 @@ describe("тексты об отмене", () => {
     expect(cancelOutcomeText({ kind: "refund", reason: "cooling_off" }, prepay)).toContain("меньше часа назад");
     expect(cancelOutcomeText({ kind: "refund", reason: "by_clinic" }, prepay)).toContain("вернётся полностью");
   });
-  it("условия предоплаты называют порог и час на размышление", () => {
+  it("условия предоплаты обещают полный возврат при любой отмене", () => {
     const t = prepayTermsText({ prepayKopecks: prepay, freeCancelHours: 24, coolingOffMinutes: 60 });
     expect(t).toContain(`400${NB}₽`);
+    expect(t).toContain("возвращается полностью независимо от времени отмены");
     expect(t).toContain("раньше чем за 24 часа");
-    expect(t).toContain(RETAIN_WORDING);
-    expect(t).toContain("в течение 60 минут после оплаты");
     expect(t).toContain("Отменить запись можно в любой момент");
   });
 });

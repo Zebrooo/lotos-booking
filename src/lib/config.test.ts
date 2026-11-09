@@ -6,8 +6,8 @@ describe("appConfig", () => {
     const c = appConfig({ NODE_ENV: "development" });
     expect(c.siteUrl).toBe("http://localhost:3000");
     expect(c.clinic).toEqual({
-      name: "Медицинский центр «Лотос»", legalName: "ООО «ЦКЗ Лотос»", address: "Еманжелинск, ул. Гагарина, 12А",
-      addressNote: "регистратура на 1 этаже", phone: "+7 900 023-05-50", license: "ЛО-74-01-005206 от 29.08.2019",
+      name: "Медицинский центр «Лотос»", legalName: "ООО «ЦКЗ \"Лотос\"»", address: "Еманжелинск, ул. Гагарина, 12А",
+      addressNote: "регистратура на 1 этаже", phone: "+7 900 023-05-50", license: "Л041-01024-74/00349048 от 29.08.2019",
     });
     expect(c.jobsIntervalMs).toBe(30_000);
     expect(c.jobsDisabled).toBe(false);
@@ -25,7 +25,7 @@ describe("appConfig", () => {
   });
   it("мягкий режим для отображения не падает при сборке", () => {
     const c = appConfig({ NODE_ENV: "production" }, { strict: false });
-    expect(c.clinic.legalName).toBe("ООО «ЦКЗ Лотос»");
+    expect(c.clinic.legalName).toBe("ООО «ЦКЗ \"Лотос\"»");
   });
   it("пустые значения в .env считаются незаданными", () => {
     const c = appConfig({ NODE_ENV: "development", CLINIC_NAME: "", CLINIC_PHONE: "", SITE_URL: "", JOBS_INTERVAL_MS: "" });

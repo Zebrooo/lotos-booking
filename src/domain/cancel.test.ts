@@ -24,10 +24,10 @@ describe("cancelOutcome", () => {
     expect(cancelOutcome({ now: new Date("2026-09-16T05:00:00Z"), startsAt, paidAt, actor: "patient", settings }))
       .toEqual({ kind: "refund", reason: "before_threshold" });
   });
-  it("позже порога — удержание", () => {
+  it("позже порога — тоже полный возврат", () => {
     const paidAt = new Date("2026-09-10T00:00:00Z");
     expect(cancelOutcome({ now: new Date("2026-09-16T05:01:00Z"), startsAt, paidAt, actor: "patient", settings }))
-      .toEqual({ kind: "retain", reason: "after_threshold" });
+      .toEqual({ kind: "refund", reason: "before_threshold" });
   });
 });
 

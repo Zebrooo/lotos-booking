@@ -22,11 +22,11 @@ export function appConfig(env: Record<string, string | undefined>, opts: { stric
     siteUrl: (env.SITE_URL || "http://localhost:3000").replace(/\/+$/, ""),
     clinic: {
       name: env.CLINIC_NAME || "Медицинский центр «Лотос»",
-      legalName: env.CLINIC_LEGAL_NAME || "ООО «ЦКЗ Лотос»",
+      legalName: env.CLINIC_LEGAL_NAME || "ООО «ЦКЗ \"Лотос\"»",
       address: env.CLINIC_ADDRESS || "Еманжелинск, ул. Гагарина, 12А",
       addressNote: env.CLINIC_ADDRESS_NOTE || "регистратура на 1 этаже",
       phone: env.CLINIC_PHONE || "+7 900 023-05-50",
-      license: env.CLINIC_LICENSE || "ЛО-74-01-005206 от 29.08.2019",
+      license: env.CLINIC_LICENSE || "Л041-01024-74/00349048 от 29.08.2019",
     },
     jobsIntervalMs: Number.isInteger(interval) && interval > 0 ? interval : 30_000,
     jobsDisabled: env.JOBS_DISABLED === "1",

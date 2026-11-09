@@ -31,21 +31,19 @@ export function renderSms(template: SmsTemplate, c: SmsContext): string {
   const day = localDay(c.startsAt);
   const when = `${relName(day, today) || wdShort(day)}, ${dateNum(day)} в ${hhmmOf(c.startsAt)}`;
   const prepay = rub(c.prepayKopecks);
-  // «Жаворонкова Е. В.» уже кончается точкой — вторую не ставим.
-  const doc = c.doctorShort.endsWith(".") ? c.doctorShort : `${c.doctorShort}.`;
   switch (template) {
     case "booking_confirmed":
-      return `Лотос: запись подтверждена — ${when}, ${doc} Предоплата ${prepay} получена. ${link}`;
+      return `Лотос: запись подтверждена — ${when}. Предоплата ${prepay} получена. ${link}`;
     case "booking_reminder":
       if ((c.status === "pending" || c.status === "held") && c.payDeadline) {
         const d = localDay(c.payDeadline);
-        return `Лотос: приём ${when}, ${doc} Внесите предоплату ${prepay} до ${hhmmOf(c.payDeadline)} ${relName(d, today) || dateNum(d)}, иначе бронь снимется: ${link}`;
+        return `Лотос: приём ${when}. Внесите предоплату ${prepay} до ${hhmmOf(c.payDeadline)} ${relName(d, today) || dateNum(d)}, иначе бронь снимется: ${link}`;
       }
-      return `Лотос: ждём вас ${when}, ${doc} ${c.clinic.address}. Приходите за ${c.arriveEarlyMinutes} мин. Перенести или отменить: ${link}`;
+      return `Лотос: ждём вас ${when}. ${c.clinic.address}. Приходите за ${c.arriveEarlyMinutes} мин. Перенести или отменить: ${link}`;
     case "booking_transferred":
-      return `Лотос: запись перенесена на ${when}, ${doc} Предоплата перешла на новую запись. ${link}`;
+      return `Лотос: запись перенесена на ${when}. Предоплата перешла на новую запись. ${link}`;
     case "booking_consent_given":
-      return `Лотос: пациент дал согласие на обработку данных — запись на ${when}, ${doc} в силе. ${link}`;
+      return `Лотос: пациент дал согласие на обработку данных — запись на ${when} в силе. ${link}`;
     case "booking_expired":
       return `Лотос: бронь на ${when} снята — предоплата не поступила вовремя. Записаться снова: ${site}`;
     case "booking_cancelled_refund": {

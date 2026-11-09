@@ -17,6 +17,7 @@ cp .env.example .env.local
 pnpm db:up
 pnpm db:migrate
 pnpm db:seed
+pnpm legal:publish
 pnpm dev
 ```
 
@@ -28,10 +29,10 @@ pnpm dev
 | Запись к врачу | `/` | без входа; код из СМС — в логе сервера `[смс:лог]` |
 | Личный кабинет | `/kabinet` | телефон `+7 900 123-45-67`, код — в логе сервера |
 | CRM регистратуры | `/crm` | `admin@lotos.demo`, `senior@lotos.demo` (старший смены), `grishin@lotos.demo` (врач), пароль `lotos-demo` |
-| Документы для пациента | `/dokumenty/predoplata`, `/dokumenty/soglasie-pd` | — |
+| Документы для пациента | `/dokumenty/klinika`, `/dokumenty/predoplata`, `/dokumenty/pravila`, `/dokumenty/politika`, `/dokumenty/soglasie-pd` | — |
 
 В разработке оплата идёт через страницу-имитацию банка, СМС и чеки пишутся в лог.
-В продакшене заглушки запрещены: конфигурация не запустится без настоящих адаптеров.
+Для production настраивается `SMS_PROVIDER=smsc`; API-ключ, согласование отправителя и регистрация исходящего IP описаны в [docs/16-smsc-setup.md](docs/16-smsc-setup.md). Реальные платёжный и фискальный адаптеры всё ещё требуют отдельного подключения.
 
 Проверки:
 

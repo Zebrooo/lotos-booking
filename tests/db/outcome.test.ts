@@ -35,10 +35,12 @@ describe("итог приёма", () => {
     const receipts = await sql<{ kind: string }[]>`select kind from receipts where booking_id = ${h.bookingId} order by id`;
     expect(receipts.map(r => r.kind)).toEqual(["advance", "settle"]);
   });
-  it("неявка: удержание без чека; повторно — bad_status", async () => {
+  it("неявка: полный возврат в работе; повторно — bad_status", async () => {
     const { h } = await paid();
     await markNoShow(sql, at("2026-09-17T06:00:00Z"), h.bookingId);
-    expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 40000 }, { kind: "retain", amountKopecks: 40000 }]);
+    expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 40000 }]);
+    const [refund] = await sql<{ status: string; amountKopecks: number }[]>`select status, amount_kopecks from refunds where booking_id = ${h.bookingId}`;
+    expect(refund).toEqual({ status: "pending", amountKopecks: 40000 });
     await expect(markDone(sql, at("2026-09-17T06:01:00Z"), h.bookingId)).rejects.toMatchObject({ code: "bad_status" });
   });
   it("неоплаченное удержание отметить нельзя", async () => {

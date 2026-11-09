@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { localDay, localTime, addDays, weekday, type IsoDay } from "../src/domain/time.ts";
+import { LEGAL_EDITION, PERSONAL_DATA_CONSENT, PREPAY_OFFER } from "../src/lib/legal/documents.ts";
 
 type Svc = { key: string; name: string; dur: number; price: number; prep?: string; device?: boolean; kind?: string };
 type Doc = { key: string; name: string; spec: string; exp: string; room: string; services: Svc[] };
@@ -104,13 +105,10 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
       await tx`insert into site_quota (resource_id, weekday, from_min, to_min) values (${doc[k]!}, ${weekday(day)}, ${h * 60 + m}, ${h * 60 + m + dur})`;
     }
 
-    // Согласия — черновики.
-    const [pd] = await tx<{ id: number }[]>`insert into consents (kind, version, body, published_at) values ('personal_data', 1,
-      ${"ЧЕРНОВИК. Текст утверждает юрист клиники.\n\nЯ даю согласие ООО «ЦКЗ Лотос» на обработку моих персональных данных и данных лица, которое я записываю: фамилии, имени, отчества, даты рождения и телефона. Цель обработки — запись на приём, напоминания о нём, выдача кассовых чеков и возврат предоплаты. Данные хранятся на серверах в России. Согласие действует до достижения цели обработки и может быть отозвано письменным заявлением в клинику."},
-      ${`${today.slice(0, 4)}-09-01`}) returning id`;
-    const [pt] = await tx<{ id: number }[]>`insert into consents (kind, version, body, published_at) values ('prepay_terms', 1,
-      ${"ЧЕРНОВИК. Текст утверждает юрист клиники.\n\nЗапись подтверждается предоплатой 400 рублей; она засчитывается в стоимость приёма, кассовый чек приходит в СМС. Отменить запись можно в любой момент; при отмене предоплата возвращается на карту, с которой была оплата. При бронировании время закрепляется до указанного срока; если не оплатить в срок, запись снимается."},
-      ${`${today.slice(0, 4)}-09-01`}) returning id`;
+    const [pd] = await tx<{ id: number }[]>`insert into consents (kind, version, body, published_at) values ('personal_data', ${LEGAL_EDITION.version},
+      ${PERSONAL_DATA_CONSENT}, ${LEGAL_EDITION.isoDate}) returning id`;
+    const [pt] = await tx<{ id: number }[]>`insert into consents (kind, version, body, published_at) values ('prepay_terms', ${LEGAL_EDITION.version},
+      ${PREPAY_OFFER}, ${LEGAL_EDITION.isoDate}) returning id`;
 
     // ── Записи ────────────────────────────────────────────────────────────
     let payN = 88100;
@@ -159,7 +157,8 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
           await tx`insert into ledger (booking_id, kind, amount_kopecks, channel, detail, created_at)
             values (${bk!.id}, 'settle', 40000, 'manual', 'чек при оказании услуги', ${startsAt})`;
         }
-        if (b.status === "no_show") await tx`insert into ledger (booking_id, kind, amount_kopecks, channel, detail) values (${bk!.id}, 'retain', 40000, 'manual', 'неявка')`;
+        if (b.status === "no_show") await tx`insert into refunds (booking_id, payment_id, amount_kopecks, method)
+          values (${bk!.id}, ${paymentId}, 40000, ${paymentId ? "provider" : b.paid === "cash" ? "cash" : "bank"})`;
         if (b.cancel?.refunded) {
           const [rl] = await tx<{ id: number }[]>`insert into ledger (booking_id, kind, amount_kopecks, payment_id, channel, detail, created_at)
             values (${bk!.id}, 'refund', 40000, ${paymentId}, ${b.paid}, 'на карту', ${createdAt}) returning id`;

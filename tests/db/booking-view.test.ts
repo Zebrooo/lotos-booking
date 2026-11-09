@@ -52,13 +52,13 @@ describe("getBookingView", () => {
     expect(v).toMatchObject({ status: "held", canPay: false });
   });
 
-  it("оплачено: до порога возврат и перенос, после порога удержание и без переноса", async () => {
+  it("оплачено: до порога возврат и перенос, после порога возврат без переноса", async () => {
     const { h } = await paid();
     const before = await getBookingView(sql, at("2026-09-15T05:00:00Z"), h.token);
     expect(before).toMatchObject({ status: "confirmed", money: "advance_held", canPay: false, canCancel: true, canTransfer: true,
       cancelPreview: { kind: "refund", reason: "before_threshold" }, freeCancelHours: 24 });
     const after = await getBookingView(sql, at("2026-09-16T20:00:00Z"), h.token);
-    expect(after).toMatchObject({ canCancel: true, canTransfer: false, cancelPreview: { kind: "retain", reason: "after_threshold" } });
+    expect(after).toMatchObject({ canCancel: true, canTransfer: false, cancelPreview: { kind: "refund", reason: "before_threshold" } });
   });
 
   it("отменённая запись: ничего нельзя; неизвестный токен — null", async () => {
