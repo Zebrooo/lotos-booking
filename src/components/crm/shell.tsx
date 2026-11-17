@@ -15,7 +15,7 @@ export function Sidebar(props: { role: Role; name: string; reconBadge: number })
   const path = usePathname();
   const items: [string, string, number][] = props.role === "doctor"
     ? [["/crm/moy-priem", "Мой приём", 0]]
-    : [["/crm/raspisanie", "Расписание", 0], ["/crm/zapisi", "Записи", 0], ["/crm/sverka", "Сверка оплат", props.reconBadge], ["/crm/pechat", "Печать на завтра", 0]];
+    : [["/crm/raspisanie", "Расписание", 0], ["/crm/zapisi", "Записи", 0], ["/crm/sverka", "Сверка оплат", props.reconBadge], ["/crm/tseny", "Цены", 0], ["/crm/pechat", "Печать на завтра", 0]];
   return (
     <aside className="no-print" style={{ borderRight: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, borderBottom: "1px solid var(--color-divider)" }}>
