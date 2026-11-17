@@ -11,6 +11,9 @@ export async function importInvitroPrices(sql: Sql, options: { fetchImpl?: typeo
     await sql`update price_import_runs set city_external_id = ${catalog.cityExternalId} where id = ${run!.id}`;
     await sql.begin(async tx => {
       for (const product of catalog.products) await upsertProduct(tx, run!.id, product);
+      await tx`update services s set price_kopecks = round(p.price_kopecks * (10000 + l.markup_bp) / 10000.0)
+        from service_price_links l join external_price_products p on p.source = l.source and p.external_id = l.external_id
+        where l.service_id = s.id and l.markup_bp is not null and p.run_id = ${run!.id}`;
       const analyses = catalog.products.filter(product => product.kind === "analysis").length;
       const complexes = catalog.products.length - analyses;
       await tx`update price_import_runs set status = 'success', total_products = ${catalog.products.length},
@@ -44,17 +47,25 @@ export async function latestImport(sql: Db): Promise<ImportSummary | null> {
 
 export type ClinicService = {
   id: number; title: string; kind: string; durationMin: number; priceKopecks: number; prepayKopecks: number; active: boolean;
-  externalId: string | null; sourcePriceKopecks: number | null; sourceUrl: string | null;
+  externalId: string | null; externalKind: "analysis" | "complex" | null; sourcePriceKopecks: number | null; sourceUrl: string | null; markupBp: number | null;
 };
 
-export async function clinicServices(sql: Db, q = ""): Promise<ClinicService[]> {
-  const query = q.trim().toLowerCase();
+export type ServiceGroup = "doctors" | "analysis" | "package";
+
+export async function clinicServices(sql: Db, input: { q?: string; group?: ServiceGroup; status?: string; source?: string } = {}): Promise<ClinicService[]> {
+  const query = input.q?.trim().toLowerCase() ?? "";
   return sql<ClinicService[]>`select s.id, s.title, s.kind, s.duration_min, s.price_kopecks, s.prepay_kopecks, s.active,
-    l.external_id, p.price_kopecks as source_price_kopecks, p.source_url
+    l.external_id, p.kind as external_kind, p.price_kopecks as source_price_kopecks, p.source_url, l.markup_bp
     from services s left join service_price_links l on l.service_id = s.id
     left join external_price_products p on p.source = l.source and p.external_id = l.external_id
       and p.run_id = (select max(id) from price_import_runs where status = 'success')
-    ${query ? sql`where lower(s.title) like ${"%" + query + "%"}` : sql``}
+    where true
+    ${query ? sql`and lower(s.title) like ${"%" + query + "%"}` : sql``}
+    ${input.group === "doctors" ? sql`and l.external_id is null and s.kind <> 'analysis'` : sql``}
+    ${input.group === "analysis" ? sql`and (p.kind = 'analysis' or (l.external_id is null and s.kind = 'analysis'))` : sql``}
+    ${input.group === "package" ? sql`and p.kind = 'complex'` : sql``}
+    ${input.status === "active" ? sql`and s.active` : input.status === "inactive" ? sql`and not s.active` : sql``}
+    ${input.source === "invitro" ? sql`and l.external_id is not null` : input.source === "own" ? sql`and l.external_id is null` : sql``}
     order by s.active desc, s.title limit 500`;
 }
 
@@ -63,20 +74,29 @@ export type ExternalService = {
   deadlineDays: number | null; availableAtHome: boolean; sourceUrl: string; serviceId: number | null;
 };
 
-export async function externalServices(sql: Db, input: { q?: string; kind?: string; offset?: number; limit?: number } = {}): Promise<{ total: number; items: ExternalService[] }> {
+export async function externalServices(sql: Db, input: { q?: string; kind?: string; category?: string; availableAtHome?: boolean; offset?: number; limit?: number } = {}): Promise<{ total: number; items: ExternalService[] }> {
   const q = input.q?.trim().toLowerCase() ?? "";
   const kind = input.kind === "analysis" || input.kind === "complex" ? input.kind : "";
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
   const offset = Math.max(input.offset ?? 0, 0);
   const run = sql`select max(id) from price_import_runs where status = 'success'`;
   const filter = sql`where p.run_id = (${run}) ${kind ? sql`and p.kind = ${kind}` : sql``}
-    ${q ? sql`and (lower(p.title) like ${"%" + q + "%"} or lower(p.code) like ${"%" + q + "%"} or lower(p.category) like ${"%" + q + "%"})` : sql``}`;
+    ${q ? sql`and (lower(p.title) like ${"%" + q + "%"} or lower(p.code) like ${"%" + q + "%"} or lower(p.category) like ${"%" + q + "%"})` : sql``}
+    ${input.category ? sql`and p.category = ${input.category}` : sql``}
+    ${input.availableAtHome ? sql`and p.available_at_home` : sql``}`;
   const [count] = await sql<{ total: number }[]>`select count(*)::int as total from external_price_products p ${filter}`;
   const items = await sql<ExternalService[]>`select p.external_id, p.kind, p.code, p.title, p.category, p.price_kopecks,
     p.deadline_days, p.available_at_home, p.source_url, l.service_id from external_price_products p
     left join service_price_links l on l.source = p.source and l.external_id = p.external_id
     ${filter} order by p.kind, p.category, p.title limit ${limit} offset ${offset}`;
   return { total: count?.total ?? 0, items };
+}
+
+export async function externalCategories(sql: Db, kind = ""): Promise<string[]> {
+  const rows = await sql<{ category: string }[]>`select distinct category from external_price_products
+    where run_id = (select max(id) from price_import_runs where status = 'success')
+    ${kind === "analysis" || kind === "complex" ? sql`and kind = ${kind}` : sql``} order by category`;
+  return rows.map(row => row.category);
 }
 
 export async function addExternalService(sql: Sql, externalId: string, adminId: number): Promise<{ serviceId: number; created: boolean }> {
@@ -94,7 +114,7 @@ export async function addExternalService(sql: Sql, externalId: string, adminId: 
         values (${p.title}, 'analysis', 15, ${p.priceKopecks}, 0, false) returning id`;
       serviceId = service!.id;
     }
-    await tx`insert into service_price_links (service_id, source, external_id) values (${serviceId}, 'invitro', ${externalId})`;
+    await tx`insert into service_price_links (service_id, source, external_id, markup_bp) values (${serviceId}, 'invitro', ${externalId}, 0)`;
     await tx`insert into audit (admin_id, action, booking_id, details) values (${adminId}, 'price_external_linked', null, ${tx.json({ externalId, serviceId } as never)})`;
     return { serviceId, created: !same };
   });
@@ -108,13 +128,33 @@ export async function updateServicePrice(sql: Sql, input: { serviceId: number; p
     const result = await tx`update services set price_kopecks = ${input.priceKopecks}, prepay_kopecks = ${input.prepayKopecks},
       duration_min = ${input.durationMin}, active = ${input.active} where id = ${input.serviceId} returning id`;
     if (result.length === 0) throw new Error("Услуга не найдена");
+    await tx`update service_price_links set markup_bp = null where service_id = ${input.serviceId}`;
     await tx`insert into audit (admin_id, action, booking_id, details) values (${input.adminId}, 'price_service_updated', null,
       ${tx.json({ serviceId: input.serviceId, priceKopecks: input.priceKopecks, prepayKopecks: input.prepayKopecks, durationMin: input.durationMin, active: input.active } as never)})`;
   });
 }
 
+export async function updateServiceMarkup(sql: Sql, input: { serviceId: number; markupBp: number; adminId: number }): Promise<void> {
+  if (!Number.isSafeInteger(input.markupBp) || input.markupBp < 0 || input.markupBp > 100000) throw new Error("Наценка должна быть от 0 до 1000% с шагом 0,01%");
+  await sql.begin(async tx => {
+    const result = await tx`update service_price_links l set markup_bp = ${input.markupBp}
+      from external_price_products p
+      where l.service_id = ${input.serviceId} and p.source = l.source and p.external_id = l.external_id
+        and p.run_id = (select max(id) from price_import_runs where status = 'success')
+      returning l.service_id`;
+    if (result.length === 0) throw new Error("Услуга не связана с действующей позицией INVITRO");
+    await tx`update services s set price_kopecks = round(p.price_kopecks * (10000 + ${input.markupBp}) / 10000.0)
+      from service_price_links l join external_price_products p on p.source = l.source and p.external_id = l.external_id
+      where l.service_id = s.id and s.id = ${input.serviceId}
+        and p.run_id = (select max(id) from price_import_runs where status = 'success')`;
+    await tx`insert into audit (admin_id, action, booking_id, details) values (${input.adminId}, 'price_markup_updated', null,
+      ${tx.json({ serviceId: input.serviceId, markupBp: input.markupBp } as never)})`;
+  });
+}
+
 export async function resetServiceToExternal(sql: Sql, serviceId: number, adminId: number): Promise<void> {
   await sql.begin(async tx => {
+    await tx`update service_price_links set markup_bp = 0 where service_id = ${serviceId}`;
     const result = await tx`update services s set price_kopecks = p.price_kopecks from service_price_links l
       join external_price_products p on p.source = l.source and p.external_id = l.external_id
         and p.run_id = (select max(id) from price_import_runs where status = 'success')

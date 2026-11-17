@@ -2,7 +2,7 @@
 
 import { app } from "@/lib/app";
 import { requireStaff } from "@/lib/staff/session-view";
-import { addExternalService, importInvitroPrices, resetServiceToExternal, updateServicePrice } from "@/lib/pricing/pricing";
+import { addExternalService, importInvitroPrices, resetServiceToExternal, updateServiceMarkup, updateServicePrice } from "@/lib/pricing/pricing";
 
 type R = { ok: boolean; error: string | null };
 const result = (error: unknown): R => ({ ok: false, error: error instanceof Error ? error.message : "Неизвестная ошибка" });
@@ -36,6 +36,17 @@ export async function updateServicePriceAction(input: { serviceId: number; price
   const { sql } = app();
   try {
     await updateServicePrice(sql, { ...input, adminId: staff.id });
+    return { ok: true, error: null };
+  } catch (error) {
+    return result(error);
+  }
+}
+
+export async function updateServiceMarkupAction(serviceId: number, markupBp: number): Promise<R> {
+  const staff = await requireStaff(["admin", "senior"]);
+  const { sql } = app();
+  try {
+    await updateServiceMarkup(sql, { serviceId: Number(serviceId), markupBp: Number(markupBp), adminId: staff.id });
     return { ok: true, error: null };
   } catch (error) {
     return result(error);
