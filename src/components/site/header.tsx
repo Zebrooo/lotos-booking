@@ -21,6 +21,7 @@ export function SiteHeader({ phone, initial }: { phone: string; initial: string 
       </Link>
       <nav style={{ display: "flex", gap: "8px 18px", alignItems: "center", fontSize: 14, flexWrap: "wrap" }}>
         <Link href="/" className="plain-link" style={{ cursor: "pointer", fontWeight: 600, color: inCab ? tx : acc }}>Запись к врачу</Link>
+        <Link href="/analizy" className="plain-link" style={{ cursor: "pointer", fontWeight: 600, color: path.startsWith("/analizy") ? acc : tx }}>Анализы</Link>
         <Link href="/kabinet" className="plain-link" style={{ cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 8, color: inCab ? acc : tx }}>
           <span style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--color-accent-100)", color: "var(--color-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13 }}>
             {initial ?? (
