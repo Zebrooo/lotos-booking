@@ -29,6 +29,7 @@ pnpm dev
 | Запись к врачу | `/` | без входа; код из СМС — в логе сервера `[смс:лог]` |
 | Личный кабинет | `/kabinet` | телефон `+7 900 123-45-67`, код — в логе сервера |
 | CRM регистратуры | `/crm` | `admin@lotos.demo`, `senior@lotos.demo` (старший смены), `grishin@lotos.demo` (врач), пароль `lotos-demo` |
+| Цены и каталог INVITRO | `/crm/tseny` | вход как в CRM; импорт — [docs/17-invitro-pricing.md](docs/17-invitro-pricing.md) |
 | Документы для пациента | `/dokumenty/klinika`, `/dokumenty/predoplata`, `/dokumenty/pravila`, `/dokumenty/politika`, `/dokumenty/soglasie-pd` | — |
 
 В разработке оплата идёт через страницу-имитацию банка, СМС и чеки пишутся в лог.
