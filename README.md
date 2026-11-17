@@ -30,7 +30,7 @@ pnpm dev
 | Личный кабинет | `/kabinet` | телефон `+7 900 123-45-67`, код — в логе сервера |
 | CRM регистратуры | `/crm` | `admin@lotos.demo`, `senior@lotos.demo` (старший смены), `grishin@lotos.demo` (врач), пароль `lotos-demo` |
 | Цены и каталог INVITRO | `/crm/tseny` | вход как в CRM; импорт — [docs/17-invitro-pricing.md](docs/17-invitro-pricing.md) |
-| Документы для пациента | `/dokumenty/klinika`, `/dokumenty/predoplata`, `/dokumenty/pravila`, `/dokumenty/politika`, `/dokumenty/soglasie-pd` | — |
+| Документы для пациента | `/dokumenty/klinika`, `/dokumenty/predoplata`, `/dokumenty/pravila`, `/dokumenty/politika`, `/dokumenty/cookie`, `/dokumenty/soglasie-pd` | — |
 
 В разработке оплата идёт через страницу-имитацию банка, СМС и чеки пишутся в лог.
 Для production настраивается `SMS_PROVIDER=smsc`; API-ключ, согласование отправителя и регистрация исходящего IP описаны в [docs/16-smsc-setup.md](docs/16-smsc-setup.md). Реальные платёжный и фискальный адаптеры всё ещё требуют отдельного подключения.

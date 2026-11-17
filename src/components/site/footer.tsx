@@ -7,6 +7,7 @@ export function SiteFooter({ clinic }: { clinic: ClinicInfo }) {
       <span style={{ marginRight: "auto" }}>{clinic.legalName} · {clinic.address} · лицензия {clinic.license}</span>
       <Link href="/dokumenty/klinika">Сведения о клинике</Link>
       <Link href="/dokumenty/politika">Политика обработки данных</Link>
+      <Link href="/dokumenty/cookie">Политика cookie</Link>
       <Link href="/dokumenty/soglasie-pd">Согласие на обработку данных</Link>
       <Link href="/dokumenty/predoplata">Договор-оферта и предоплата</Link>
       <Link href="/dokumenty/pravila">Правила оказания платных услуг</Link>
