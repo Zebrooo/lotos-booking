@@ -9,6 +9,7 @@ import { getLatestConsent, type ConsentKind } from "@/lib/queries/consents";
 import { localDay } from "@/domain/time";
 import { Main } from "@/components/site/stepper";
 import { LEGAL_PAGES } from "@/lib/legal/documents";
+import { CookieSettingsButton } from "@/components/common/cookie-consent";
 
 const DOCS: Record<string, { title: string; consent?: ConsentKind; body?: string }> = {
   predoplata: { title: "Договор-оферта на платные медицинские услуги", consent: "prepay_terms" },
@@ -39,6 +40,7 @@ export default async function Document(props: PageProps<"/dokumenty/[slug]">) {
         <div style={{ background: "var(--color-surface)", borderRadius: 24, padding: 24, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-line", textWrap: "pretty" }}>
           {consent?.body ?? doc.body ?? "Документ временно недоступен. Получите его в регистратуре клиники."}
         </div>
+        {doc === LEGAL_PAGES.cookie && <CookieSettingsButton />}
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>{config.clinic.legalName} · {config.clinic.address} · лицензия {config.clinic.license} · {config.clinic.phone}</span>
       </article>
     </Main>
