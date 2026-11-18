@@ -12,6 +12,7 @@ import nodemailer from "nodemailer";
 import { systemClock } from "./clock-system";
 import { logSms } from "./sms-log";
 import { createSmscSms } from "./sms-smsc";
+import { createSmsruSms } from "./sms-smsru";
 
 export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; sms: SmsSender; clock: Clock };
 
@@ -24,13 +25,16 @@ export function loadAdapters(env: Record<string, string | undefined>): Adapters 
   if (env.NODE_ENV === "production" && smsName === "log") {
     throw new Error("SMS_PROVIDER=log запрещён в production: коды уходили бы в лог, а не пациентам");
   }
-  if (smsName !== "log" && smsName !== "smsc") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
+  if (smsName !== "log" && smsName !== "smsc" && smsName !== "smsru") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
   let sms: SmsSender;
   if (smsName === "log") {
     sms = logSms;
-  } else {
+  } else if (smsName === "smsc") {
     if (!env.SMSC_API_KEY || !env.SMSC_SENDER) throw new Error("SMS_PROVIDER=smsc требует SMSC_API_KEY и SMSC_SENDER");
     sms = createSmscSms({ apiKey: env.SMSC_API_KEY, sender: env.SMSC_SENDER });
+  } else {
+    if (!env.SMSRU_API_ID || !env.SMSRU_SENDER) throw new Error("SMS_PROVIDER=smsru требует SMSRU_API_ID и SMSRU_SENDER");
+    sms = createSmsruSms({ apiId: env.SMSRU_API_ID, sender: env.SMSRU_SENDER });
   }
   let payment: PaymentProvider;
   if (provider === "fake") {
