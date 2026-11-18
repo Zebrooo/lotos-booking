@@ -21,6 +21,11 @@ describe("loadAdapters", () => {
     const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsc", SMSC_API_KEY: "key", SMSC_SENDER: "LOTOS" });
     expect(a.sms.name).toBe("smsc");
   });
+  it("SMS.ru требует API-ключ и зарегистрированное имя отправителя", () => {
+    expect(() => loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsru" })).toThrow(/SMSRU_API_ID/);
+    const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsru", SMSRU_API_ID: "key", SMSRU_SENDER: "LOTOS_EMAN" });
+    expect(a.sms.name).toBe("smsru");
+  });
   it("заглушка платежей в production запрещена", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/PAYMENT_PROVIDER=fake/);
   });
