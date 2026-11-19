@@ -77,8 +77,11 @@ export function LabCatalog(props: Props) {
           <div className="lab-selection-items">
             {selected.map(item => (
               <div className="lab-selection-item" key={item.id}>
-                <div className="lab-selection-item-text"><span>{item.title}</span><small>{item.code ? `№ ${item.code} · ` : ""}{rub(item.priceKopecks)}</small></div>
-                <button type="button" className="lab-selection-remove" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} title="Убрать из набора"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+                <div className="lab-selection-item-text">
+                  <span>{item.title}</span>
+                  <div className="lab-selection-item-meta">{item.code && <span>№ {item.code}</span>}<strong>{rub(item.priceKopecks)}</strong></div>
+                </div>
+                <button type="button" className="lab-selection-remove" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} title="Убрать из набора"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg><span>Убрать</span></button>
               </div>
             ))}
           </div>
