@@ -29,4 +29,14 @@ describe("данные каталога lab-пула", () => {
     expect(catalog.items.find(item => item.id === unconfigured!.id)?.bookable).toBe(false);
     expect((await selectedLabServices(sql, s.labIds)).map(item => item.id)).toEqual([s.labIds[0]]);
   });
+
+  it("фильтрует по основной рубрике, включая собственные услуги без внешней категории", async () => {
+    const s = await seedLab(sql);
+    const blood = await publicLabServices(sql, { group: "blood" });
+    const hormones = await publicLabServices(sql, { group: "hormones" });
+    const unknown = await publicLabServices(sql, { group: "unknown" });
+    expect(blood.items.map(item => item.id).sort((a, b) => a - b)).toEqual([...s.labIds].sort((a, b) => a - b));
+    expect(hormones.items).toEqual([]);
+    expect(unknown.total).toBe(2);
+  });
 });
