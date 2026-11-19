@@ -18,8 +18,8 @@ export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: N
 
 export function loadAdapters(env: Record<string, string | undefined>): Adapters {
   const provider = env.PAYMENT_PROVIDER || "fake";
-  if (env.NODE_ENV === "production" && provider === "fake") {
-    throw new Error("PAYMENT_PROVIDER=fake запрещён в production");
+  if (env.NODE_ENV === "production" && provider === "fake" && env.ALLOW_DEMO_PAYMENTS !== "1") {
+    throw new Error("PAYMENT_PROVIDER=fake запрещён в production без явного ALLOW_DEMO_PAYMENTS=1");
   }
   const smsName = env.SMS_PROVIDER || "log";
   if (env.NODE_ENV === "production" && smsName === "log") {

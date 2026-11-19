@@ -26,8 +26,10 @@ describe("loadAdapters", () => {
     const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsru", SMSRU_API_ID: "key", SMSRU_SENDER: "LOTOS_EMAN" });
     expect(a.sms.name).toBe("smsru");
   });
-  it("заглушка платежей в production запрещена", () => {
+  it("заглушка платежей в production запрещена без явного разрешения", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/PAYMENT_PROVIDER=fake/);
+    const a = loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake", ALLOW_DEMO_PAYMENTS: "1", SMS_PROVIDER: "smsc", SMSC_API_KEY: "key", SMSC_SENDER: "LOTOS" });
+    expect(a.payment.name).toBe("fake");
   });
   it("почта через SMTP требует SMTP_URL и MAIL_FROM", () => {
     expect(() => loadAdapters({ NODE_ENV: "development", NOTIFIER: "smtp" })).toThrow(/SMTP_URL/);
