@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { app } from "@/lib/app";
-import { publicLabCategories, publicLabServices } from "@/lib/pricing/public";
+import { publicLabCategories, publicLabServices, selectedLabServices } from "@/lib/pricing/public";
+import { parseLabServiceIds } from "@/lib/lab-pool";
 import { Main } from "@/components/site/stepper";
 import { LabCatalog } from "@/components/booking/lab-catalog";
 
@@ -14,14 +15,16 @@ export default async function LabPage(props: PageProps<"/analizy">) {
   const category = typeof params.category === "string" ? params.category.slice(0, 200) : "";
   const availableAtHome = params.home === "1";
   const offset = Math.max(Number(params.offset) || 0, 0);
-  const [catalog, categories] = await Promise.all([
+  const serviceIds = parseLabServiceIds(params.services);
+  const [catalog, categories, selected] = await Promise.all([
     publicLabServices(sql, { q, kind, category, availableAtHome, offset, limit: 24 }),
     publicLabCategories(sql, kind),
+    selectedLabServices(sql, serviceIds),
   ]);
   return (
     <Main>
       <LabCatalog q={q} kind={kind} category={category} categories={categories} availableAtHome={availableAtHome}
-        offset={offset} total={catalog.total} items={catalog.items} />
+        offset={offset} total={catalog.total} items={catalog.items} selected={selected.filter(item => item.bookable)} />
     </Main>
   );
 }

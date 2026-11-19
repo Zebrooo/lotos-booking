@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
-import { holdSlot } from "@/lib/usecases/hold";
+import { holdLabPool, holdSlot } from "@/lib/usecases/hold";
 import { UsecaseError } from "@/lib/usecases/errors";
 import { localTime } from "@/domain/time";
 
@@ -85,6 +85,22 @@ describe("holdSlot", () => {
     const input = { serviceId: s.consultId, doctorId: s.doctorId, startsAt: localTime(DAY, 600), patient, consentIds: s.consentIds };
     await expect(holdSlot(sql, clock, input)).rejects.toMatchObject({ code: "online_paused" });
     await expect(holdSlot(sql, clock, { ...input, source: "admin" })).resolves.toBeTruthy();
+  });
+
+  it("lab-пул сохраняет весь состав, суммы и один общий ресурс", async () => {
+    const s = await seedLab(sql);
+    const r = await holdLabPool(sql, clock, { serviceIds: [s.labIds[1], s.labIds[0]], startsAt: localTime(DAY, 600), patient, consentIds: s.consentIds });
+    expect(r.endsAt.toISOString()).toBe(localTime(DAY, 635).toISOString());
+    expect(r.prepayKopecks).toBe(25000);
+    const [b] = await sql<{ serviceId: number; resourceId: number; service: { durationMin: number; priceKopecks: number; prepayKopecks: number; items: { serviceId: number }[] } }[]>`
+      select service_id, resource_id, service from bookings where id = ${r.bookingId}`;
+    expect(b).toMatchObject({ serviceId: s.labIds[0], resourceId: s.labRoomId,
+      service: { durationMin: 35, priceKopecks: 80000, prepayKopecks: 25000 } });
+    expect(b!.service.items.map(item => item.serviceId)).toEqual(s.labIds);
+    expect(await sql`select 1 from booking_resources where booking_id = ${r.bookingId} and active`).toHaveLength(1);
+    await expect(holdLabPool(sql, clock, { serviceIds: s.labIds, startsAt: localTime(DAY, 615), patient: { ...patient, phone: "+79000000002" }, consentIds: s.consentIds }))
+      .rejects.toMatchObject({ code: "slot_taken" });
+    expect(await sql`select 1 from bookings`).toHaveLength(1);
   });
 
   it("UsecaseError — это Error с кодом", () => {

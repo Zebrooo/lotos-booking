@@ -30,3 +30,15 @@ export async function seedClinic(sql: Sql) {
   const [pt] = await sql<{ id: number }[]>`insert into consents (kind, version, body) values ('prepay_terms', 1, 'Условия предоплаты, редакция 1') returning id`;
   return { doctorId: doctor!.id, deviceId: device!.id, consultId: consult!.id, uziId: uzi!.id, consentIds: [pd!.id, pt!.id] as [number, number] };
 }
+
+export async function seedLab(sql: Sql) {
+  const clinic = await seedClinic(sql);
+  const [room] = await sql<{ id: number }[]>`insert into resources (kind, title, room) values ('room', 'Процедурный кабинет', '102') returning id`;
+  for (const wd of [1, 2, 3, 4, 5]) await sql`insert into schedule_rules (resource_id, weekday, from_min, to_min) values (${room!.id}, ${wd}, 540, 1080)`;
+  const [first] = await sql<{ id: number }[]>`insert into services (title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note)
+    values ('Глюкоза', 'analysis', 15, 30000, 10000, 'Натощак') returning id`;
+  const [second] = await sql<{ id: number }[]>`insert into services (title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note)
+    values ('Общий анализ крови', 'analysis', 20, 50000, 15000, 'Натощак') returning id`;
+  await sql`insert into service_resources (service_id, resource_id) values (${first!.id}, ${room!.id}), (${second!.id}, ${room!.id})`;
+  return { ...clinic, labRoomId: room!.id, labIds: [first!.id, second!.id] as [number, number] };
+}

@@ -4,6 +4,8 @@ import type { Sql } from "@/lib/db/client";
 import { seedDemoV2 } from "../../scripts/seed-demo-v2.ts";
 import { listCatalog } from "@/lib/queries/catalog";
 import { availableSlots } from "@/lib/queries/availability";
+import { availableLabSlots } from "@/lib/queries/lab-availability";
+import { publicLabServices } from "@/lib/pricing/public";
 import { moneyState, type LedgerRow } from "@/domain/money";
 
 let sql: Sql;
@@ -59,6 +61,16 @@ describe("демо-клиника v2", () => {
     const [up] = await sql<{ n: number }[]>`select count(*)::int as n from bookings b join patients p on p.id = b.patient_id
       where p.phone = '+79001234567' and b.starts_at > ${now} and b.status in ('pending', 'confirmed')`;
     expect(up!.n).toBe(2);
+  });
+
+  it("демо-анализы активны, кабинет имеет расписание и доступные окна", async () => {
+    await seedDemoV2(sql, now, { staffPassword: "demo" });
+    const catalog = await publicLabServices(sql);
+    expect(catalog.items).toHaveLength(2);
+    expect(catalog.items.every(item => item.bookable)).toBe(true);
+    const availability = await availableLabSlots(sql, { now: () => now }, { serviceIds: catalog.items.map(item => item.id), fromDay: "2026-09-25", days: 1 });
+    expect(availability.pool.snapshot.durationMin).toBe(20);
+    expect(availability.days[0]!.slots.length).toBeGreaterThan(0);
   });
 
   it("у кардиолога есть окна, повторный запуск ничего не дублирует", async () => {

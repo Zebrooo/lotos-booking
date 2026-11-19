@@ -47,5 +47,8 @@ export async function changeNumberAction(token: string): Promise<void> {
   if (!step) redirect("/");
   await abandonHold(sql, token);
   await savePrefill(step.prefill);
+  if (step.isLab) {
+    redirect(`/analizy/zapis/dannye?services=${step.serviceIds.join(",")}&start=${encodeURIComponent(step.startsAt.toISOString())}`);
+  }
   redirect(`/vrach/${step.doctorId}/dannye?svc=${step.serviceId}&start=${encodeURIComponent(step.startsAt.toISOString())}`);
 }

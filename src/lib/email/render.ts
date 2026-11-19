@@ -23,7 +23,7 @@ export function isEmailTemplate(v: string): v is EmailTemplate {
 export function renderEmail(template: EmailTemplate, c: EmailContext): { subject: string; text: string } {
   const when = formatDateTime(c.startsAt);
   const link = `${c.siteUrl.replace(/\/$/, "")}/moya-zapis/${c.token}`;
-  const what = [`Услуга: ${c.serviceTitle}`, `Врач: ${c.doctorTitle}`, `Время: ${when}`].join("\n");
+  const what = [`Услуга: ${c.serviceTitle}`, `Место: ${c.doctorTitle}`, `Время: ${when}`].join("\n");
   const visit = [
     `Приходите за ${c.arriveEarlyMinutes} минут до приёма, чтобы подписать документы. Возьмите паспорт.`,
     "Остаток стоимости можно оплатить картой или наличными.",

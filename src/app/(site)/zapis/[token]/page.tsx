@@ -35,14 +35,14 @@ export default async function Done(props: PageProps<"/zapis/[token]">) {
 
   return (
     <>
-      <Stepper step={4} />
+      <Stepper step={4} firstLabel={v.isLab ? "Анализы" : "Врач"} />
       <Main>
         <section style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 900 }}>
           {v.status === "held" && v.holdUntil && <RefreshWhileWaiting untilIso={v.holdUntil.toISOString()} />}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <span style={{ fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-accent-700)" }}>{first(sp.pereneseno) ? `Запись перенесена · № ${v.id}` : kicker}</span>
             <h1 style={{ margin: 0, fontSize: "var(--h1-size)", lineHeight: 1.02, letterSpacing: "-0.03em", textWrap: "balance" }}>{dayLong(localDay(v.startsAt), today)}, {hhmmOf(v.startsAt)}</h1>
-            <span style={{ fontSize: 17 }}>{v.service.title} · {surname} {given}, {(v.doctor.specialty ?? "").toLowerCase()}</span>
+            <span style={{ fontSize: 17 }}>{v.service.title} · {v.isLab ? v.doctor.title : `${surname} ${given}, ${(v.doctor.specialty ?? "").toLowerCase()}`}</span>
           </div>
           {!paid && v.canPay && (
             <div style={{ border: "1px solid var(--color-neutral-300)", padding: 18, display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "center", borderRadius: 24 }}>
@@ -65,7 +65,8 @@ export default async function Done(props: PageProps<"/zapis/[token]">) {
               </div>
             ))}
           </div>
-          <span style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>{remind ? `Напомним по СМС ${remind}. ` : ""}Отменить или перенести запись можно в любой момент на странице «Моя запись» — ссылка в СМС.</span>
+          {v.items.length > 0 && <div style={{ fontSize: 14, lineHeight: 1.6 }}><strong>Состав:</strong> {v.items.map(item => item.title).join(", ")}</div>}
+          <span style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>{remind ? `Напомним по СМС ${remind}. ` : ""}{v.isLab ? "Отменить запись можно" : "Отменить или перенести запись можно"} в любой момент на странице «Моя запись» — ссылка в СМС.</span>
           <span style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>Номер записи — идентификатор договора. <Link href="/dokumenty/predoplata" className="plain-link">Условия договора-оферты и порядок получения его экземпляра</Link>.</span>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link href={`/moya-zapis/${v.token}`} className="btn btn-primary" style={{ padding: "14px 16px", minWidth: 220, justifyContent: "space-between" }}>Моя запись<span>→</span></Link>

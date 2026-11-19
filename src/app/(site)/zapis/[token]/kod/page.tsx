@@ -13,7 +13,7 @@ export default async function CodePage(props: PageProps<"/zapis/[token]/kod">) {
   if (step.verified || step.status !== "held") redirect(`/zapis/${token}`);
   return (
     <>
-      <Stepper step={3} />
+      <Stepper step={3} firstLabel={step.isLab ? "Анализы" : "Врач"} />
       <Main>
         <section style={{ maxWidth: 560, display: "flex", flexDirection: "column", gap: 24 }}>
           <CodeForm phone={step.phoneMasked} cta={step.payMode === "online" ? "Перейти к оплате" : "Забронировать"}

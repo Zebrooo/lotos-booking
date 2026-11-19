@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import type { SmsSender } from "@/ports/sms";
 import { startBooking, confirmBookingCode, resendBookingCode } from "@/lib/usecases/start-booking";
@@ -77,6 +77,22 @@ describe("startBooking", () => {
     await start(capture(), { payChoice: "reserve" });
     const [b] = await sql<{ payMode: string }[]>`select pay_mode from bookings`;
     expect(b!.payMode).toBe("online");
+  });
+
+  it("lab-пул проходит общий старт с СМС, онлайн-оплатой и бронью", async () => {
+    for (const payChoice of ["online", "reserve"] as const) {
+      await truncateAll(sql);
+      const s = await seedLab(sql);
+      const sms = capture();
+      const r = await startBooking(sql, deps(sms), { serviceIds: s.labIds, startsAt: localTime("2026-09-17", 600),
+        who: "self", form: self, consentPd: true, consentPrepay: true, payChoice });
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const [b] = await sql<{ payMode: string; service: { items: unknown[]; prepayKopecks: number } }[]>`select pay_mode, service from bookings`;
+      expect(b).toMatchObject({ payMode: payChoice, service: { prepayKopecks: 25000 } });
+      expect(b!.service.items).toHaveLength(2);
+      expect(sms.sent[0]?.text).toContain(`/moya-zapis/${r.token}`);
+    }
   });
 });
 

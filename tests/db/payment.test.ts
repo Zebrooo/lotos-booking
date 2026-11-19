@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
-import { holdSlot } from "@/lib/usecases/hold";
+import { holdLabPool, holdSlot } from "@/lib/usecases/hold";
 import { createPayment, applyPaymentNotification, ledgerRows } from "@/lib/usecases/payment";
 import { createFakePaymentProvider } from "@/adapters/payment-fake";
 import { localTime } from "@/domain/time";
@@ -30,6 +30,17 @@ describe("createPayment", () => {
     const [p] = await sql<{ amountKopecks: number; status: string; externalId: string }[]>`select amount_kopecks, status, external_id from payments`;
     expect(p).toMatchObject({ amountKopecks: 40000, status: "created", externalId: `fake-${r1.paymentId}` });
   });
+  it("lab-пул оплачивает суммарную предоплату и подтверждается существующим платёжным сценарием", async () => {
+    const s = await seedLab(sql);
+    const h = await holdLabPool(sql, clock, { serviceIds: s.labIds, startsAt: localTime("2026-09-15", 600), patient, consentIds: s.consentIds });
+    const { paymentId } = await createPayment(sql, { payment, clock }, { token: h.token, returnUrl: "http://x/r" });
+    const [p] = await sql<{ amountKopecks: number }[]>`select amount_kopecks from payments where id = ${paymentId}`;
+    expect(p!.amountKopecks).toBe(25000);
+    expect(await applyPaymentNotification(sql, clock, { provider: "fake", notification: { externalId: `fake-${paymentId}`, status: "paid", amountKopecks: 25000, raw: {} } }))
+      .toEqual({ outcome: "confirmed" });
+    expect(await ledgerRows(sql, h.bookingId)).toEqual([{ kind: "advance", amountKopecks: 25000 }]);
+  });
+
   it("после истечения удержания платёж не создаётся", async () => {
     const h = await heldBooking();
     const late = { now: () => new Date("2026-09-14T06:20:00Z") };
