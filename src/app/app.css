@@ -162,6 +162,7 @@ a.btn { letter-spacing: normal; }
   .lab-selection-price { text-align: left; width: 100%; }
   .lab-selection-price > strong { font-size: 28px; }
   .lab-selection-price > small { margin-top: 2px; }
+  .lab-selection-items { max-height: none; overflow: visible; }
   .lab-selection-item { padding: 14px; flex-direction: column; align-items: stretch; gap: 12px; }
   .lab-selection-remove { align-self: flex-end; }
   .lab-selection-footer { flex-direction: column; align-items: stretch; gap: 14px; }
