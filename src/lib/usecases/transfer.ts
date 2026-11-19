@@ -7,6 +7,7 @@ import type { Clock } from "@/ports/clock";
 import { localDay, addMinutes } from "@/domain/time";
 import { isSlotFree } from "@/domain/slots";
 import { transition } from "@/domain/transitions";
+import { isPoolSnapshot } from "@/domain/booking-service";
 import { canTransfer } from "@/domain/cancel";
 import { reserveDeadline } from "@/domain/reserve";
 import { canAppend, balanceKopecks, type LedgerRow } from "@/domain/money";
@@ -22,6 +23,7 @@ export async function transferBooking(sql: Sql, clock: Clock, input: { token?: s
   try {
     return await sql.begin(async tx => {
       const old = await findBooking(tx, input, true);
+      if (isPoolSnapshot(old.service)) throw new UsecaseError("transfer_not_allowed", "перенос набора анализов пока недоступен");
       const t = transition(old.status, "transfer", input.actor);
       if (!t.ok) throw new UsecaseError("bad_status", t.reason);
       if (!canTransfer({ now, startsAt: old.startsAt, actor: input.actor, settings })) throw new UsecaseError("transfer_not_allowed", "перенос позже порога — через клинику");

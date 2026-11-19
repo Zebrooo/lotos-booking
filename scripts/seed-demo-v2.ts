@@ -47,8 +47,11 @@ const DOCTORS: Doc[] = [
     { key: "pv1", name: "Консультация эндокринолога", dur: 30, price: 1800 }] },
 ];
 
-const LAB: Svc = { key: "lab1", name: "Анализы крови: липидный профиль, ОАК", dur: 10, price: 1250, kind: "analysis",
-  prep: "Натощак, утром: последний приём пищи за 8–12 часов, воду пить можно." };
+const LABS: Svc[] = [
+  { key: "lab1", name: "Анализы крови: липидный профиль, ОАК", dur: 10, price: 1250, kind: "analysis",
+    prep: "Натощак, утром: последний приём пищи за 8–12 часов, воду пить можно." },
+  { key: "lab2", name: "Глюкоза в крови", dur: 10, price: 450, kind: "analysis", prep: "Сдавать натощак, воду пить можно." },
+];
 
 const e164 = (p: string) => "+" + p.replace(/\D/g, "");
 const isoDob = (d: string) => `${d.slice(6)}-${d.slice(3, 5)}-${d.slice(0, 2)}`;
@@ -73,6 +76,7 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
     const svc: Record<string, { id: number; title: string; dur: number; price: number }> = {};
     const [device] = await tx<{ id: number }[]>`insert into resources (kind, title) values ('device', 'Аппарат УЗИ') returning id`;
     const [labRoom] = await tx<{ id: number }[]>`insert into resources (kind, title, room) values ('room', 'Процедурный кабинет', '102') returning id`;
+    for (const wd of [1, 2, 3, 4, 5, 6]) await tx`insert into schedule_rules (resource_id, weekday, from_min, to_min) values (${labRoom!.id}, ${wd}, 480, 900)`;
     for (const d of DOCTORS) {
       const [r] = await tx<{ id: number }[]>`insert into resources (kind, title, specialty, experience, room)
         values ('doctor', ${d.name}, ${d.spec}, ${d.exp}, ${d.room}) returning id`;
@@ -87,10 +91,12 @@ export async function seedDemoV2(sql: Sql, now: Date, opts: { staffPassword: str
         if (s.device) await tx`insert into service_resources (service_id, resource_id) values (${row!.id}, ${device!.id})`;
       }
     }
-    const [labSvc] = await tx<{ id: number }[]>`insert into services (title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note, active)
-      values (${LAB.name}, 'analysis', ${LAB.dur}, ${LAB.price * 100}, 40000, ${LAB.prep!}, false) returning id`;
-    svc.lab1 = { id: labSvc!.id, title: LAB.name, dur: LAB.dur, price: LAB.price };
-    await tx`insert into service_resources (service_id, resource_id) values (${labSvc!.id}, ${labRoom!.id})`;
+    for (const lab of LABS) {
+      const [labSvc] = await tx<{ id: number }[]>`insert into services (title, kind, duration_min, price_kopecks, prepay_kopecks, prep_note, active)
+        values (${lab.name}, 'analysis', ${lab.dur}, ${lab.price * 100}, 40000, ${lab.prep!}, true) returning id`;
+      svc[lab.key] = { id: labSvc!.id, title: lab.name, dur: lab.dur, price: lab.price };
+      await tx`insert into service_resources (service_id, resource_id) values (${labSvc!.id}, ${labRoom!.id})`;
+    }
 
     // Групповой день Гришина — первая суббота после «завтра», решение накануне в 12:00.
     let sat = addDays(d1, 1);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
-import { holdSlot } from "@/lib/usecases/hold";
+import { holdLabPool, holdSlot } from "@/lib/usecases/hold";
 import { createPayment, applyPaymentNotification } from "@/lib/usecases/payment";
 import { cancelBooking } from "@/lib/usecases/cancel";
 import { transferBooking } from "@/lib/usecases/transfer";
@@ -39,7 +39,7 @@ describe("getBookingView", () => {
     expect(v).toMatchObject({
       token: h.token, status: "held", statusLabel: "Ждёт оплаты", serviceId: s.consultId, doctorId: s.doctorId,
       service: { title: "Консультация кардиолога", durationMin: 30 }, doctor: { title: "Жаворонкова А. А.", specialty: "кардиолог" },
-      money: "unpaid", prepayKopecks: 40000, canPay: true, canCancel: true, canTransfer: false,
+      money: "unpaid", prepayKopecks: 40000, canPay: true, canCancel: true, canTransfer: false, isLab: false, items: [],
       cancelPreview: { kind: "none", reason: "not_paid" }, patientName: "Иванов Иван Иванович", emailMasked: "i***@example.com",
     });
     expect(v!.startsAt.toISOString()).toBe(START.toISOString());
@@ -76,6 +76,20 @@ describe("getBookingView", () => {
     expect(v).toMatchObject({ status: "transferred", transferredToToken: t.newToken, canCancel: false });
     const fresh = await getBookingView(sql, at("2026-09-15T05:01:00Z"), t.newToken);
     expect(fresh).toMatchObject({ status: "confirmed", transferredToToken: null, money: "advance_held" });
+  });
+
+  it("lab-пул читается целиком и не переносится, старая запись остаётся нетронутой", async () => {
+    const s = await seedLab(sql);
+    const h = await holdLabPool(sql, at("2026-09-14T06:00:00Z"), { serviceIds: s.labIds, startsAt: START, patient, consentIds: s.consentIds });
+    await sql`update bookings set status = 'confirmed', hold_until = null where id = ${h.bookingId}`;
+    const v = await getBookingView(sql, at("2026-09-15T05:00:00Z"), h.token);
+    expect(v).toMatchObject({ isLab: true, canTransfer: false, service: { prepNote: "Натощак" }, doctor: { title: "Процедурный кабинет" } });
+    expect(v!.items.map(item => item.serviceId)).toEqual(s.labIds);
+    await expect(transferBooking(sql, at("2026-09-15T05:00:00Z"), { token: h.token, actor: "clinic", doctorId: s.labRoomId, startsAt: localTime("2026-09-18", 900) }))
+      .rejects.toMatchObject({ code: "transfer_not_allowed" });
+    const [old] = await sql<{ status: string }[]>`select status from bookings where id = ${h.bookingId}`;
+    expect(old!.status).toBe("confirmed");
+    expect(await sql`select 1 from bookings`).toHaveLength(1);
   });
 
   it("v2: номер, цена, кто записал, бронь со сроком и оплата по ссылке до срока", async () => {

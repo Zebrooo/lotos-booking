@@ -10,14 +10,14 @@ import { reserveDeadline, type ReserveSettings } from "@/domain/reserve";
 import { transition, type BookingStatus } from "@/domain/transitions";
 import { fieldErrors, parseDob, phoneE164, CONSENT_ERROR, type FormV2, type Who } from "@/lib/forms/booking-v2";
 import { startPatientSession } from "@/lib/cabinet/session";
-import { holdSlot } from "./hold";
+import { holdLabPool, holdSlot } from "./hold";
 import { issueCode, verifyCode } from "./sms-codes";
 import { loadSettings, type Settings } from "./settings";
 import { UsecaseError, type UsecaseErrorCode } from "./errors";
 
 export type StartDeps = { sms: SmsSender; clock: Clock; pepper: string; siteUrl: string; genCode?: () => string };
 export type StartInput = {
-  serviceId: number; doctorId: number; startsAt: Date; who: Who; form: FormV2;
+  serviceId?: number; doctorId?: number; serviceIds?: number[]; startsAt: Date; who: Who; form: FormV2;
   consentPd: boolean; consentPrepay: boolean; payChoice: "online" | "reserve"; ip?: string; userAgent?: string;
 };
 export type StartResult = { ok: true; token: string } | { ok: false; errors: Record<string, string> };
@@ -32,6 +32,8 @@ const HOLD_MESSAGES: Partial<Record<UsecaseErrorCode, string>> = {
   doctor_mismatch: "Услуга или врач недоступны для записи.",
   service_inactive: "Услуга или врач недоступны для записи.",
   not_found: "Услуга или врач недоступны для записи.",
+  lab_pool_invalid: "Одна или несколько услуг недоступны. Вернитесь к каталогу и обновите выбор.",
+  lab_resource_missing: "Для выбранных анализов нет общего свободного кабинета. Измените состав записи.",
   consent_missing: "Тексты согласий не опубликованы, запись временно недоступна.",
 };
 
@@ -66,13 +68,16 @@ export async function startBooking(sql: Sql, deps: StartDeps, input: StartInput)
 
   let token: string, bookingId: number;
   try {
-    const h = await holdSlot(sql, deps.clock, {
-      serviceId: input.serviceId, doctorId: input.doctorId, startsAt: input.startsAt,
+    const holdInput = {
+      startsAt: input.startsAt,
       patient: { fullName: input.form.fio.trim().replace(/\s+/g, " "), birthDate: dob.iso, phone: patientPhone, email: "" },
-      booker: input.who === "child" ? { relation: "child", name: input.form.repFio.trim().replace(/\s+/g, " "), phone: contactPhone, email: "" }
-        : input.who === "other" ? { relation: "relative", name: "", phone: contactPhone, email: "" } : undefined,
-      consentIds: consents.map(c => c.id), ip: input.ip, userAgent: input.userAgent, source: "site",
-    });
+      booker: input.who === "child" ? { relation: "child" as const, name: input.form.repFio.trim().replace(/\s+/g, " "), phone: contactPhone, email: "" }
+        : input.who === "other" ? { relation: "relative" as const, name: "", phone: contactPhone, email: "" } : undefined,
+      consentIds: consents.map(c => c.id), ip: input.ip, userAgent: input.userAgent, source: "site" as const,
+    };
+    const h = input.serviceIds
+      ? await holdLabPool(sql, deps.clock, { ...holdInput, serviceIds: input.serviceIds })
+      : await holdSlot(sql, deps.clock, { ...holdInput, serviceId: input.serviceId ?? 0, doctorId: input.doctorId ?? 0 });
     token = h.token;
     bookingId = h.bookingId;
   } catch (e) {

@@ -49,7 +49,7 @@ export async function sendQueuedNotifications(sql: Sql, out: Outbox, mail: MailS
   const settings = await loadSettings(sql);
   const rows = await sql<{
     id: number; channel: "sms" | "email"; recipient: string; template: string; payload: { reason?: string; method?: string }; attempts: number;
-    token: string | null; status: string | null; service: { title: string; prepayKopecks: number } | null; startsAt: Date | null;
+    token: string | null; status: string | null; service: { title: string; prepayKopecks: number; prepNote?: string | null } | null; startsAt: Date | null;
     holdUntil: Date | null; payDeadline: Date | null; doctorTitle: string | null; doctorKind: string | null; prepNote: string | null;
   }[]>`
     select n.id, n.channel, n.recipient, n.template, n.payload, n.attempts, b.token, b.status, b.service, b.starts_at, b.hold_until, b.pay_deadline,
@@ -82,7 +82,7 @@ export async function sendQueuedNotifications(sql: Sql, out: Outbox, mail: MailS
       const msg = renderEmail(n.template, {
         siteUrl: mail.siteUrl, clinic: mail.clinic, token: n.token,
         serviceTitle: n.service.title, doctorTitle: n.doctorTitle ?? "", startsAt: n.startsAt,
-        prepayKopecks: n.service.prepayKopecks, arriveEarlyMinutes: settings.arriveEarlyMinutes, prepNote: n.prepNote, refundReason,
+        prepayKopecks: n.service.prepayKopecks, arriveEarlyMinutes: settings.arriveEarlyMinutes, prepNote: n.service.prepNote ?? n.prepNote, refundReason,
       });
       res = await out.notifier.sendEmail({ to: n.recipient, subject: msg.subject, text: msg.text });
     } else {

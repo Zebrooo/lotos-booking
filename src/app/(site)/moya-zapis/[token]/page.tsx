@@ -59,7 +59,7 @@ export default async function MyBooking(props: PageProps<"/moya-zapis/[token]">)
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-neutral-700)" }}>Моя запись · № {v.id}</span>
           <h2 style={{ margin: 0, fontSize: "var(--h2-size)", letterSpacing: "-0.025em", textDecoration: v.status === "cancelled" ? "line-through" : "none" }}>{when}</h2>
-          <span style={{ fontSize: 16 }}>{v.service.title} · {surname} {given}, {(v.doctor.specialty ?? "").toLowerCase()}</span>
+          <span style={{ fontSize: 16 }}>{v.service.title} · {v.isLab ? v.doctor.title : `${surname} ${given}, ${(v.doctor.specialty ?? "").toLowerCase()}`}</span>
         </div>
         {v.transferredToToken && <Link href={`/moya-zapis/${v.transferredToToken}`} style={{ fontSize: 14, fontWeight: 700 }}>Открыть новую запись →</Link>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14, background: "transparent" }}>
@@ -68,6 +68,7 @@ export default async function MyBooking(props: PageProps<"/moya-zapis/[token]">)
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           {[{ k: "Пациент", v: v.patientName }, { k: "Записал", v: v.recorder }, { k: "Услуга", v: `${v.service.title} · ${rub(v.priceKopecks)}` },
+            ...(v.items.length ? [{ k: "Состав", v: v.items.map(item => item.title).join(", ") }] : []),
             ...(v.consentPending ? [{ k: "Согласие пациента", v: "ждём по ссылке из СМС" }] : []),
             { k: "Адрес", v: `${config.clinic.address} · ${config.clinic.addressNote}` }].map(r => (
             <div key={r.k} style={{ display: "grid", gridTemplateColumns: "180px minmax(0,1fr)", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--color-divider)", fontSize: 14 }}>

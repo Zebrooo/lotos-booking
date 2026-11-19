@@ -14,7 +14,7 @@ import { queueReceipt, queueSms } from "./contact";
 export type BookingRow = {
   id: number; token: string; patientId: number; status: BookingStatus; startsAt: Date; endsAt: Date;
   paidAt: Date | null; resourceId: number; serviceId: number;
-  service: { title: string; durationMin: number; prepayKopecks: number }; email: string;
+  service: { title: string; durationMin: number; prepayKopecks: number; items?: unknown }; email: string;
 };
 
 export async function findBooking(sql: Db, ref: { token?: string; bookingId?: number }, forUpdate = false): Promise<BookingRow> {

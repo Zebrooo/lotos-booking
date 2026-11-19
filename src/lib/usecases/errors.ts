@@ -2,7 +2,7 @@
 export type UsecaseErrorCode =
   | "slot_taken" | "slot_closed" | "slot_past" | "beyond_horizon" | "duplicate_booking"
   | "not_found" | "bad_status" | "amount_mismatch" | "consent_missing" | "service_inactive"
-  | "transfer_not_allowed" | "online_paused" | "doctor_mismatch";
+  | "transfer_not_allowed" | "online_paused" | "doctor_mismatch" | "lab_pool_invalid" | "lab_resource_missing";
 
 export class UsecaseError extends Error {
   constructor(public readonly code: UsecaseErrorCode, message: string) {

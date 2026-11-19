@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import type { SmsSender } from "@/ports/sms";
 import { startBooking } from "@/lib/usecases/start-booking";
@@ -35,6 +35,15 @@ describe("шаг кода", () => {
     });
     expect(c!.resendAt.toISOString()).toBe("2026-09-14T06:01:00.000Z");
     expect(await codeStep(sql, clock, "нет-такого")).toBeNull();
+  });
+
+  it("lab-пул возвращает все serviceIds для обратного перехода к форме", async () => {
+    const s = await seedLab(sql);
+    const r = await startBooking(sql, { sms, clock, pepper: "t", siteUrl: "http://x", genCode: () => "2604" }, {
+      serviceIds: s.labIds, startsAt: localTime("2026-09-17", 600), who: "child", form,
+      consentPd: true, consentPrepay: true, payChoice: "reserve" });
+    if (!r.ok) throw new Error("старт не удался");
+    expect(await codeStep(sql, clock, r.token)).toMatchObject({ isLab: true, serviceIds: s.labIds, doctorId: s.labRoomId });
   });
 
   it("«Изменить номер»: удержание снято без уведомлений, окно свободно; подтверждённую запись так не бросить", async () => {

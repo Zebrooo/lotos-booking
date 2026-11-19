@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { testDb, truncateAll, seedClinic } from "./helpers";
+import { testDb, truncateAll, seedClinic, seedLab } from "./helpers";
 import type { Sql } from "@/lib/db/client";
 import { availableSlots } from "@/lib/queries/availability";
-import { holdSlot } from "@/lib/usecases/hold";
+import { availableLabSlots } from "@/lib/queries/lab-availability";
+import { holdLabPool, holdSlot } from "@/lib/usecases/hold";
 import { localTime } from "@/domain/time";
 
 let sql: Sql;
@@ -11,6 +12,7 @@ afterAll(async () => { await sql.end(); });
 beforeEach(async () => { await truncateAll(sql); });
 
 const clock = { now: () => new Date("2026-09-14T06:00:00Z") }; // пн 11:00 по Челябинску
+const DAY = "2026-09-15";
 const patient = { fullName: "Иванов Иван Иванович", birthDate: "1980-01-01", phone: "+79000000001", email: "ivanov@example.com" };
 const counts = (days: { day: string; slots: unknown[] }[]) => Object.fromEntries(days.map(d => [d.day, d.slots.length]));
 
@@ -56,5 +58,29 @@ describe("availableSlots", () => {
     const s = await seedClinic(sql);
     const r = await availableSlots(sql, clock, { serviceId: s.consultId, doctorId: s.doctorId, fromDay: "2026-10-13", days: 3 });
     expect(counts(r)).toEqual({ "2026-10-13": 30, "2026-10-14": 30, "2026-10-15": 0 });
+  });
+
+  it("lab-пул использует суммарную длительность и занятость общего кабинета", async () => {
+    const s = await seedLab(sql);
+    const before = await availableLabSlots(sql, clock, { serviceIds: s.labIds, fromDay: DAY, days: 1 });
+    expect(before.pool.snapshot.durationMin).toBe(35);
+    expect(before.days[0]!.slots).toHaveLength(34);
+    await holdLabPool(sql, clock, { serviceIds: s.labIds, startsAt: localTime(DAY, 600), patient, consentIds: s.consentIds });
+    const after = await availableLabSlots(sql, clock, { serviceIds: s.labIds, fromDay: DAY, days: 1 });
+    expect(after.days[0]!.slots.length).toBeLessThan(before.days[0]!.slots.length);
+    expect(after.days[0]!.slots.some(slot => slot.startsAt.getTime() === localTime(DAY, 600).getTime())).toBe(false);
+  });
+
+  it("lab-пул отклоняет неактивную услугу, кабинет без расписания и разные кабинеты", async () => {
+    const s = await seedLab(sql);
+    await sql`update services set active = false where id = ${s.labIds[1]}`;
+    await expect(availableLabSlots(sql, clock, { serviceIds: s.labIds, fromDay: DAY, days: 1 })).rejects.toMatchObject({ code: "lab_pool_invalid" });
+    await sql`update services set active = true where id = ${s.labIds[1]}`;
+    await sql`delete from schedule_rules where resource_id = ${s.labRoomId}`;
+    await expect(availableLabSlots(sql, clock, { serviceIds: s.labIds, fromDay: DAY, days: 1 })).rejects.toMatchObject({ code: "lab_resource_missing" });
+    for (const wd of [1, 2, 3, 4, 5]) await sql`insert into schedule_rules (resource_id, weekday, from_min, to_min) values (${s.labRoomId}, ${wd}, 540, 1080)`;
+    const [other] = await sql<{ id: number }[]>`insert into resources (kind, title) values ('room', 'Другой кабинет') returning id`;
+    await sql`update service_resources set resource_id = ${other!.id} where service_id = ${s.labIds[1]}`;
+    await expect(availableLabSlots(sql, clock, { serviceIds: s.labIds, fromDay: DAY, days: 1 })).rejects.toMatchObject({ code: "lab_resource_missing" });
   });
 });

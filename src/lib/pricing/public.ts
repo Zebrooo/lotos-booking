@@ -7,10 +7,21 @@ export type PublicLabService = {
   kind: "analysis" | "complex";
   category: string;
   priceKopecks: number;
+  durationMin: number;
+  prepayKopecks: number;
+  prepNote: string | null;
   deadlineDays: number | null;
   availableAtHome: boolean;
   sourceUrl: string | null;
+  bookable: boolean;
 };
+
+const bookable = `exists (
+  select 1 from service_resources sr
+  join resources r on r.id = sr.resource_id
+  where sr.service_id = s.id and r.kind = 'room' and r.active
+    and exists (select 1 from schedule_rules where resource_id = r.id)
+) and s.prepay_kopecks > 0 and s.duration_min > 0`;
 
 export async function publicLabServices(sql: Db, input: { q?: string; kind?: string; category?: string; availableAtHome?: boolean; offset?: number; limit?: number } = {}): Promise<{ total: number; items: PublicLabService[] }> {
   const q = input.q?.trim().toLowerCase() ?? "";
@@ -28,12 +39,27 @@ export async function publicLabServices(sql: Db, input: { q?: string; kind?: str
       and p.run_id = (select max(id) from price_import_runs where status = 'success') ${filter}`;
   const items = await sql<PublicLabService[]>`select s.id, coalesce(p.code, '') as code, s.title,
     coalesce(p.kind, 'analysis') as kind, coalesce(p.category, '') as category, s.price_kopecks,
-    p.deadline_days, coalesce(p.available_at_home, false) as available_at_home, p.source_url
+    s.duration_min, s.prepay_kopecks, s.prep_note, p.deadline_days,
+    coalesce(p.available_at_home, false) as available_at_home, p.source_url, ${sql.unsafe(bookable)} as bookable
     from services s left join service_price_links l on l.service_id = s.id
     left join external_price_products p on p.source = l.source and p.external_id = l.external_id
       and p.run_id = (select max(id) from price_import_runs where status = 'success')
     ${filter} order by p.kind nulls last, p.category nulls last, s.title limit ${limit} offset ${offset}`;
   return { total: count?.total ?? 0, items };
+}
+
+export async function selectedLabServices(sql: Db, ids: number[]): Promise<PublicLabService[]> {
+  if (ids.length === 0) return [];
+  return sql<PublicLabService[]>`select s.id, coalesce(p.code, '') as code, s.title,
+    coalesce(p.kind, 'analysis') as kind, coalesce(p.category, '') as category, s.price_kopecks,
+    s.duration_min, s.prepay_kopecks, s.prep_note, p.deadline_days,
+    coalesce(p.available_at_home, false) as available_at_home, p.source_url, ${sql.unsafe(bookable)} as bookable
+    from services s left join service_price_links l on l.service_id = s.id
+    left join external_price_products p on p.source = l.source and p.external_id = l.external_id
+      and p.run_id = (select max(id) from price_import_runs where status = 'success')
+    where s.id in ${sql(ids)} and s.active
+      and (p.kind in ('analysis', 'complex') or (l.external_id is null and s.kind = 'analysis'))
+    order by s.id`;
 }
 
 export async function publicLabCategories(sql: Db, kind = ""): Promise<string[]> {
