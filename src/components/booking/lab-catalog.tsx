@@ -57,24 +57,35 @@ export function LabCatalog(props: Props) {
       </form>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {([["", "Все"], ["analysis", "Анализы"], ["complex", "Пакеты"]] as const).map(([value, label]) => (
-          <button key={value} aria-pressed={props.kind === value} onClick={() => navigate({ kind: value, category: "", offset: 0 })}
+          <button key={value} className="lab-filter" aria-pressed={props.kind === value} onClick={() => navigate({ kind: value, category: "", offset: 0 })}
             style={{ font: "inherit", fontSize: 14, padding: "8px 16px", cursor: "pointer", border: "1px solid var(--color-divider)", background: props.kind === value ? tx : "transparent", color: props.kind === value ? "var(--color-bg)" : tx, borderRadius: 999 }}>{label}</button>
         ))}
         <select className="input" aria-label="Категория исследования" value={props.category} onChange={event => navigate({ category: event.target.value, offset: 0 })} style={{ maxWidth: 300 }}>
           <option value="">Все категории</option>{props.categories.map(category => <option key={category} value={category}>{category}</option>)}
         </select>
-        <label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={props.availableAtHome} onChange={event => navigate({ home: event.target.checked ? "1" : "", offset: 0 })} /> Доступно на дому</label>
+        <label className="lab-home-filter" style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={props.availableAtHome} onChange={event => navigate({ home: event.target.checked ? "1" : "", offset: 0 })} /> Доступно на дому</label>
       </div>
       {selected.length > 0 && (
-        <aside aria-label="Выбранные анализы" style={{ background: "var(--color-surface)", padding: 20, borderRadius: 24, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
-            <strong>{selected.length} {plural(selected.length, "позиция", "позиции", "позиций")} · {duration} минут</strong>
-            <span><b style={{ fontSize: 22 }}>{rub(price)}</b> · предоплата {rub(prepay)}</span>
+        <aside aria-label="Выбранные анализы" className="lab-selection">
+          <div className="lab-selection-head">
+            <div className="lab-selection-heading">
+              <span className="lab-selection-check" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg></span>
+              <div><strong>Ваш набор анализов</strong><span>{selected.length} {plural(selected.length, "позиция", "позиции", "позиций")} · {duration} минут</span></div>
+            </div>
+            <div className="lab-selection-price"><span>Итого</span><strong>{rub(price)}</strong><small>Предоплата {rub(prepay)}</small></div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {selected.map(item => <button key={item.id} type="button" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} className="tag tag-outline" style={{ cursor: "pointer" }}>{item.title} ×</button>)}
+          <div className="lab-selection-items">
+            {selected.map(item => (
+              <div className="lab-selection-item" key={item.id}>
+                <div className="lab-selection-item-text"><span>{item.title}</span><small>{item.code ? `№ ${item.code} · ` : ""}{rub(item.priceKopecks)}</small></div>
+                <button type="button" className="lab-selection-remove" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} title="Убрать из набора"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+              </div>
+            ))}
           </div>
-          <Link className="btn btn-primary" href={`/analizy/zapis?services=${query}`} style={{ alignSelf: "flex-start", padding: "12px 18px" }}>Выбрать время →</Link>
+          <div className="lab-selection-footer">
+            <div className="lab-selection-visit"><strong>Один визит</strong><span>Все исследования — в процедурном кабинете</span></div>
+            <Link className="btn btn-primary lab-selection-cta" href={`/analizy/zapis?services=${query}`} prefetch={false}>Выбрать дату и время<span aria-hidden="true">→</span></Link>
+          </div>
         </aside>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid var(--color-divider)", paddingBottom: 8 }}>
@@ -107,7 +118,7 @@ export function LabCatalog(props: Props) {
                 <b style={{ fontSize: 20, whiteSpace: "nowrap" }}>{rub(item.priceKopecks)}</b>
                 {item.sourceUrl && <Link className="plain-link" href={item.sourceUrl} target="_blank" style={{ fontSize: 13, color: "var(--color-accent-700)" }}>Подробнее ↗</Link>}
               </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, cursor: disabled ? "default" : "pointer", opacity: item.bookable ? 1 : 0.6 }}>
+              <label className={`lab-service-select${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}`}>
                 <input type="checkbox" checked={selected} disabled={disabled} onChange={() => toggle(item)} />
                 {!item.bookable ? "Онлайн-запись недоступна" : selected ? "Выбрано" : selectedIds.length >= MAX_LAB_SERVICES ? `Не более ${MAX_LAB_SERVICES} позиций` : "Выбрать"}
               </label>
