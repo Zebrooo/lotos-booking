@@ -6,7 +6,7 @@
  */
 body { margin: 0; background: #ffffff; }
 a { color: #0a4ba8; }
-a:hover { color: #073a85; }
+a:not(.btn):hover { color: #073a85; }
 
 :root {
   --h1-size: 56px;
