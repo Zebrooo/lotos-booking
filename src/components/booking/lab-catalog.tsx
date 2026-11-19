@@ -10,8 +10,11 @@ import type { PublicLabService } from "@/lib/pricing/public";
 type Props = {
   q: string;
   kind: string;
+  group: string;
   category: string;
   categories: string[];
+  groups: { id: string; label: string; count: number }[];
+  allCount: number;
   availableAtHome: boolean;
   offset: number;
   total: number;
@@ -28,7 +31,7 @@ export function LabCatalog(props: Props) {
   const [selected, setSelected] = useState(props.selected);
   const selectedIds = selected.map(item => item.id);
   const navigate = (patch: Record<string, string | number>) => {
-    const params = new URLSearchParams({ q: props.q, kind: props.kind, category: props.category, home: props.availableAtHome ? "1" : "", offset: String(props.offset), services: labServicesQuery(selectedIds), ...patch } as Record<string, string>);
+    const params = new URLSearchParams({ q: props.q, kind: props.kind, group: props.group, category: props.category, home: props.availableAtHome ? "1" : "", offset: String(props.offset), services: labServicesQuery(selectedIds), ...patch } as Record<string, string>);
     router.push(`/analizy?${params.toString()}`);
   };
   const toggle = (item: PublicLabService) => {
@@ -55,13 +58,23 @@ export function LabCatalog(props: Props) {
         <button className="btn btn-primary" type="submit">Найти</button>
         {props.q && <button className="btn btn-secondary" type="button" onClick={() => { setQ(""); navigate({ q: "", offset: 0 }); }}>Сбросить</button>}
       </form>
+      <div className="lab-popular">
+        <span>Часто ищут:</span>
+        {["Общий анализ крови", "Глюкоза", "Витамин D", "Ферритин", "ТТГ"].map(term => <button key={term} type="button" onClick={() => { setQ(term); navigate({ q: term, group: "", category: "", offset: 0 }); }}>{term}</button>)}
+      </div>
+      <nav className="lab-groups" aria-label="Основные рубрики анализов">
+        <button type="button" className={`lab-group${props.group === "" ? " is-active" : ""}`} aria-pressed={props.group === ""} onClick={() => navigate({ group: "", category: "", offset: 0 })}><span>Все анализы</span><small>{props.allCount}</small></button>
+        {props.groups.map(group => (
+          <button key={group.id} type="button" disabled={group.count === 0} className={`lab-group${props.group === group.id ? " is-active" : ""}`} aria-pressed={props.group === group.id} onClick={() => navigate({ group: group.id, category: "", offset: 0 })}><span>{group.label}</span><small>{group.count}</small></button>
+        ))}
+      </nav>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {([["", "Все"], ["analysis", "Анализы"], ["complex", "Пакеты"]] as const).map(([value, label]) => (
           <button key={value} className="lab-filter" aria-pressed={props.kind === value} onClick={() => navigate({ kind: value, category: "", offset: 0 })}
             style={{ font: "inherit", fontSize: 14, padding: "8px 16px", cursor: "pointer", border: "1px solid var(--color-divider)", background: props.kind === value ? tx : "transparent", color: props.kind === value ? "var(--color-bg)" : tx, borderRadius: 999 }}>{label}</button>
         ))}
-        <select className="input" aria-label="Категория исследования" value={props.category} onChange={event => navigate({ category: event.target.value, offset: 0 })} style={{ maxWidth: 300 }}>
-          <option value="">Все категории</option>{props.categories.map(category => <option key={category} value={category}>{category}</option>)}
+        <select className="input" aria-label="Точная категория" value={props.category} onChange={event => navigate({ category: event.target.value, offset: 0 })} style={{ maxWidth: 360 }}>
+          <option value="">{props.group ? "Все категории в рубрике" : "Все точные категории"}</option>{props.categories.map(category => <option key={category} value={category}>{category}</option>)}
         </select>
         <label className="lab-home-filter" style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={props.availableAtHome} onChange={event => navigate({ home: event.target.checked ? "1" : "", offset: 0 })} /> Доступно на дому</label>
       </div>
