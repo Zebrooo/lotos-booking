@@ -25,18 +25,24 @@ const tx = "var(--color-text)";
 export function LabCatalog(props: Props) {
   const router = useRouter();
   const [q, setQ] = useState(props.q);
-  const selectedIds = props.selected.map(item => item.id);
+  const [selected, setSelected] = useState(props.selected);
+  const selectedIds = selected.map(item => item.id);
   const navigate = (patch: Record<string, string | number>) => {
     const params = new URLSearchParams({ q: props.q, kind: props.kind, category: props.category, home: props.availableAtHome ? "1" : "", offset: String(props.offset), services: labServicesQuery(selectedIds), ...patch } as Record<string, string>);
     router.push(`/analizy?${params.toString()}`);
   };
   const toggle = (item: PublicLabService) => {
-    const ids = selectedIds.includes(item.id) ? selectedIds.filter(id => id !== item.id) : [...selectedIds, item.id];
-    navigate({ services: labServicesQuery(ids) });
+    const next = selectedIds.includes(item.id) ? selected.filter(value => value.id !== item.id) : [...selected, item];
+    setSelected(next);
+    const params = new URLSearchParams(window.location.search);
+    const ids = labServicesQuery(next.map(value => value.id));
+    if (ids) params.set("services", ids); else params.delete("services");
+    const search = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`);
   };
-  const price = props.selected.reduce((sum, item) => sum + item.priceKopecks, 0);
-  const prepay = props.selected.reduce((sum, item) => sum + item.prepayKopecks, 0);
-  const duration = props.selected.reduce((sum, item) => sum + item.durationMin, 0);
+  const price = selected.reduce((sum, item) => sum + item.priceKopecks, 0);
+  const prepay = selected.reduce((sum, item) => sum + item.prepayKopecks, 0);
+  const duration = selected.reduce((sum, item) => sum + item.durationMin, 0);
   const query = labServicesQuery(selectedIds);
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -59,14 +65,14 @@ export function LabCatalog(props: Props) {
         </select>
         <label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: 14 }}><input type="checkbox" checked={props.availableAtHome} onChange={event => navigate({ home: event.target.checked ? "1" : "", offset: 0 })} /> Доступно на дому</label>
       </div>
-      {props.selected.length > 0 && (
+      {selected.length > 0 && (
         <aside aria-label="Выбранные анализы" style={{ background: "var(--color-surface)", padding: 20, borderRadius: 24, display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
-            <strong>{props.selected.length} {plural(props.selected.length, "позиция", "позиции", "позиций")} · {duration} минут</strong>
+            <strong>{selected.length} {plural(selected.length, "позиция", "позиции", "позиций")} · {duration} минут</strong>
             <span><b style={{ fontSize: 22 }}>{rub(price)}</b> · предоплата {rub(prepay)}</span>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {props.selected.map(item => <button key={item.id} type="button" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} className="tag tag-outline" style={{ cursor: "pointer" }}>{item.title} ×</button>)}
+            {selected.map(item => <button key={item.id} type="button" onClick={() => toggle(item)} aria-label={`Убрать ${item.title}`} className="tag tag-outline" style={{ cursor: "pointer" }}>{item.title} ×</button>)}
           </div>
           <Link className="btn btn-primary" href={`/analizy/zapis?services=${query}`} style={{ alignSelf: "flex-start", padding: "12px 18px" }}>Выбрать время →</Link>
         </aside>

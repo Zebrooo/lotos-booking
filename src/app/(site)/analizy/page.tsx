@@ -23,7 +23,8 @@ export default async function LabPage(props: PageProps<"/analizy">) {
   ]);
   return (
     <Main>
-      <LabCatalog q={q} kind={kind} category={category} categories={categories} availableAtHome={availableAtHome}
+      <LabCatalog key={`${q}:${kind}:${category}:${availableAtHome}:${offset}:${serviceIds.join(",")}`}
+        q={q} kind={kind} category={category} categories={categories} availableAtHome={availableAtHome}
         offset={offset} total={catalog.total} items={catalog.items} selected={selected.filter(item => item.bookable)} />
     </Main>
   );
