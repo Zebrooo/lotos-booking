@@ -31,7 +31,7 @@ export async function publicLabServices(sql: Db, input: { q?: string; kind?: str
   const limit = Math.min(Math.max(input.limit ?? 24, 1), 100);
   const offset = Math.max(input.offset ?? 0, 0);
   const filter = sql`where s.active and (p.kind in ('analysis', 'complex') or (l.external_id is null and s.kind = 'analysis'))
-    ${q ? sql`and (lower(s.title) like ${"%" + q + "%"} or lower(p.code) like ${"%" + q + "%"} or lower(p.category) like ${"%" + q + "%"})` : sql``}
+    ${q ? sql`and (lower(s.title) like ${"%" + q + "%"} or lower(coalesce(p.code, s.local_code, '')) like ${"%" + q + "%"} or lower(p.category) like ${"%" + q + "%"})` : sql``}
     ${kind ? sql`and p.kind = ${kind}` : sql``}
     ${group ? sql`and coalesce(p.category, s.title) ~* ${group.pattern}` : sql``}
     ${input.category ? sql`and p.category = ${input.category}` : sql``}
@@ -40,7 +40,7 @@ export async function publicLabServices(sql: Db, input: { q?: string; kind?: str
     left join service_price_links l on l.service_id = s.id
     left join external_price_products p on p.source = l.source and p.external_id = l.external_id
       and p.run_id = (select max(id) from price_import_runs where status = 'success') ${filter}`;
-  const items = await sql<PublicLabService[]>`select s.id, coalesce(p.code, '') as code, s.title,
+  const items = await sql<PublicLabService[]>`select s.id, coalesce(p.code, s.local_code, '') as code, s.title,
     coalesce(p.kind, 'analysis') as kind, coalesce(p.category, '') as category, s.price_kopecks,
     s.duration_min, s.prepay_kopecks, s.prep_note, p.deadline_days,
     coalesce(p.available_at_home, false) as available_at_home, p.source_url, ${sql.unsafe(bookable)} as bookable
@@ -53,7 +53,7 @@ export async function publicLabServices(sql: Db, input: { q?: string; kind?: str
 
 export async function selectedLabServices(sql: Db, ids: number[]): Promise<PublicLabService[]> {
   if (ids.length === 0) return [];
-  return sql<PublicLabService[]>`select s.id, coalesce(p.code, '') as code, s.title,
+  return sql<PublicLabService[]>`select s.id, coalesce(p.code, s.local_code, '') as code, s.title,
     coalesce(p.kind, 'analysis') as kind, coalesce(p.category, '') as category, s.price_kopecks,
     s.duration_min, s.prepay_kopecks, s.prep_note, p.deadline_days,
     coalesce(p.available_at_home, false) as available_at_home, p.source_url, ${sql.unsafe(bookable)} as bookable
