@@ -13,8 +13,29 @@ import { systemClock } from "./clock-system";
 import { logSms } from "./sms-log";
 import { createSmscSms } from "./sms-smsc";
 import { createSmsruSms } from "./sms-smsru";
+import { createUcallerSms } from "./sms-ucaller";
 
 export type Adapters = { payment: PaymentProvider; fiscal: Fiscalizer; notify: Notifier; sms: SmsSender; clock: Clock };
+
+function loadSms(env: Record<string, string | undefined>, name: string): SmsSender {
+  if (name === "log") return logSms;
+  if (name === "smsc") {
+    if (!env.SMSC_API_KEY || !env.SMSC_SENDER) throw new Error("SMS_PROVIDER=smsc требует SMSC_API_KEY и SMSC_SENDER");
+    return createSmscSms({ apiKey: env.SMSC_API_KEY, sender: env.SMSC_SENDER });
+  }
+  if (name === "smsru") {
+    if (!env.SMSRU_API_ID || !env.SMSRU_SENDER) throw new Error("SMS_PROVIDER=smsru требует SMSRU_API_ID и SMSRU_SENDER");
+    return createSmsruSms({ apiId: env.SMSRU_API_ID, sender: env.SMSRU_SENDER });
+  }
+  if (name === "ucaller") {
+    if (!env.UCALLER_KEY || !env.UCALLER_SERVICE_ID) throw new Error("SMS_PROVIDER=ucaller требует UCALLER_KEY и UCALLER_SERVICE_ID");
+    if (env.SMS_FALLBACK_PROVIDER !== "smsc" && env.SMS_FALLBACK_PROVIDER !== "smsru") {
+      throw new Error("SMS_PROVIDER=ucaller требует SMS_FALLBACK_PROVIDER=smsc или smsru для обычных уведомлений");
+    }
+    return createUcallerSms({ key: env.UCALLER_KEY, serviceId: env.UCALLER_SERVICE_ID, client: env.UCALLER_CLIENT, fallback: loadSms(env, env.SMS_FALLBACK_PROVIDER) });
+  }
+  throw new Error(`Неизвестный SMS_PROVIDER: ${name}`);
+}
 
 export function loadAdapters(env: Record<string, string | undefined>): Adapters {
   const provider = env.PAYMENT_PROVIDER || "fake";
@@ -25,17 +46,7 @@ export function loadAdapters(env: Record<string, string | undefined>): Adapters 
   if (env.NODE_ENV === "production" && smsName === "log") {
     throw new Error("SMS_PROVIDER=log запрещён в production: коды уходили бы в лог, а не пациентам");
   }
-  if (smsName !== "log" && smsName !== "smsc" && smsName !== "smsru") throw new Error(`Неизвестный SMS_PROVIDER: ${smsName}`);
-  let sms: SmsSender;
-  if (smsName === "log") {
-    sms = logSms;
-  } else if (smsName === "smsc") {
-    if (!env.SMSC_API_KEY || !env.SMSC_SENDER) throw new Error("SMS_PROVIDER=smsc требует SMSC_API_KEY и SMSC_SENDER");
-    sms = createSmscSms({ apiKey: env.SMSC_API_KEY, sender: env.SMSC_SENDER });
-  } else {
-    if (!env.SMSRU_API_ID || !env.SMSRU_SENDER) throw new Error("SMS_PROVIDER=smsru требует SMSRU_API_ID и SMSRU_SENDER");
-    sms = createSmsruSms({ apiId: env.SMSRU_API_ID, sender: env.SMSRU_SENDER });
-  }
+  const sms = loadSms(env, smsName);
   let payment: PaymentProvider;
   if (provider === "fake") {
     payment = createFakePaymentProvider({ baseUrl: env.SITE_URL || "http://localhost:3000", secret: env.FAKE_PAYMENT_SECRET || "dev-secret" });
