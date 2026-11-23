@@ -26,6 +26,12 @@ describe("loadAdapters", () => {
     const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "smsru", SMSRU_API_ID: "key", SMSRU_SENDER: "LOTOS_EMAN" });
     expect(a.sms.name).toBe("smsru");
   });
+  it("uCaller требует ключи и явный резервный провайдер уведомлений", () => {
+    expect(() => loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "ucaller" })).toThrow(/UCALLER_KEY/);
+    expect(() => loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "ucaller", UCALLER_KEY: "key", UCALLER_SERVICE_ID: "service" })).toThrow(/SMS_FALLBACK_PROVIDER/);
+    const a = loadAdapters({ NODE_ENV: "development", SMS_PROVIDER: "ucaller", UCALLER_KEY: "key", UCALLER_SERVICE_ID: "service", SMS_FALLBACK_PROVIDER: "smsc", SMSC_API_KEY: "key", SMSC_SENDER: "LOTOS" });
+    expect(a.sms.name).toBe("ucaller");
+  });
   it("заглушка платежей в production запрещена без явного разрешения", () => {
     expect(() => loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake" })).toThrow(/PAYMENT_PROVIDER=fake/);
     const a = loadAdapters({ NODE_ENV: "production", PAYMENT_PROVIDER: "fake", ALLOW_DEMO_PAYMENTS: "1", SMS_PROVIDER: "smsc", SMSC_API_KEY: "key", SMSC_SENDER: "LOTOS" });
