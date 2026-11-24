@@ -160,7 +160,7 @@ export function BookingForm(props: {
         <span style={{ fontSize: 12, color: "var(--color-neutral-700)" }}>{effPay === "online" ? "Код и ссылку на оплату пришлём одним СМС." : `Время закрепим за вами до ${props.deadlineLabel}.`}</span>
         {formHasErr && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-danger)" }}>{nErr === 1 ? "Исправьте отмеченное красным" : `Исправьте отмеченное красным — ${nErr} ${plural(nErr, "пункт", "пункта", "пунктов")}`}</span>}
         {serverErr._form && <span role="alert" style={{ fontSize: 13, fontWeight: 600, color: "var(--color-danger)" }}>{serverErr._form}</span>}
-        <button className="btn btn-primary" onClick={submit} disabled={pending} style={{ padding: "14px 16px", fontSize: 15, justifyContent: "space-between" }}>{pending ? "Отправляем код…" : "Получить код по СМС"}<span>→</span></button>
+        <button className="btn btn-primary" onClick={submit} disabled={pending} style={{ padding: "14px 16px", fontSize: 15, justifyContent: "space-between" }}>{pending ? "Отправляем код…" : "Получить код"}<span>→</span></button>
       </aside>
     </section>
   );

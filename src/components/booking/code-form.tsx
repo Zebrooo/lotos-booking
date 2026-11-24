@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 export function CodeForm(props: {
-  phone: string; cta: string; resendAt: string; devHint: boolean;
+  phone: string; cta: string; resendAt: string; devHint: boolean; call?: boolean;
   confirm: (code: string) => Promise<{ error: string }>;
   resend: () => Promise<{ error: string | null; resendAt: string | null }>;
   changeNumber: () => Promise<void>;
@@ -28,17 +28,19 @@ export function CodeForm(props: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h2 style={{ margin: 0, fontSize: "var(--h2-size)", letterSpacing: "-0.025em" }}>Подтвердите телефон</h2>
-      <p style={{ margin: 0, fontSize: 15, textWrap: "pretty" }}>Отправили СМС на {props.phone}. В нём код и ссылка на оплату — если закроете страницу, оплатить можно по ссылке.</p>
+      <p style={{ margin: 0, fontSize: 15, textWrap: "pretty" }}>{props.call
+        ? <>Позвоним на {props.phone}. Введите последние 4 цифры номера, с которого поступит звонок.</>
+        : <>Отправили СМС на {props.phone}. В нём код и ссылка на оплату — если закроете страницу, оплатить можно по ссылке.</>}</p>
       <div className="field">
-        <label htmlFor="sms-code">Код из СМС</label>
+        <label htmlFor="sms-code">{props.call ? "Последние 4 цифры номера звонящего" : "Код из СМС"}</label>
         <input id="sms-code" className="input" value={code} inputMode="numeric" autoComplete="one-time-code" placeholder="4 цифры"
           onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 4)); setErr(null); }}
           onKeyDown={e => { if (e.key === "Enter" && code.length === 4) check(); }}
           style={{ minHeight: 56, fontSize: 28, fontWeight: 800, letterSpacing: "0.3em", maxWidth: 220, borderColor: err ? "var(--color-danger)" : "transparent" }} />
       </div>
       <span style={{ fontSize: 12, color: err ? "var(--color-danger)" : "var(--color-neutral-700)" }}>
-        {err ?? (left > 0 ? `Отправить повторно через 0:${String(left).padStart(2, "0")}` : "")}
-        {!err && left === 0 && <button type="button" onClick={resend} disabled={pending} className="btn-ghost" style={{ font: "inherit", fontSize: 12, border: 0, background: "transparent", color: "var(--color-accent)", cursor: "pointer", padding: 0 }}>Отправить код ещё раз</button>}
+        {err ?? (left > 0 ? `${props.call ? "Повторить звонок" : "Отправить повторно"} через 0:${String(left).padStart(2, "0")}` : "")}
+        {!err && left === 0 && <button type="button" onClick={resend} disabled={pending} className="btn-ghost" style={{ font: "inherit", fontSize: 12, border: 0, background: "transparent", color: "var(--color-accent)", cursor: "pointer", padding: 0 }}>{props.call ? "Позвонить ещё раз" : "Отправить код ещё раз"}</button>}
         {!err && props.devHint && " · код — в логе сервера (СМС-заглушка)"}
       </span>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

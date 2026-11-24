@@ -18,7 +18,7 @@ export default async function CabinetPage() {
     <Main>
       {data
         ? <Cabinet vm={cabinetViewModel(data, adapters.clock.now(), { address: config.clinic.address })} ownerId={data.owner.id} />
-        : <section style={{ display: "flex", flexDirection: "column", gap: 24 }}><CabinetLogin /></section>}
+        : <section style={{ display: "flex", flexDirection: "column", gap: 24 }}><CabinetLogin call={adapters.sms.name === "ucaller"} /></section>}
     </Main>
   );
 }
